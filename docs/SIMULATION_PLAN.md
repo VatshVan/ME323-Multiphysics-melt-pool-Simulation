@@ -41,8 +41,17 @@ the Darcy coefficients (`C = 180 μ/DAS²` per unit volume) gives
 AdditiveFOAM has no B: it caps the solid fraction at 0.95 instead. That gives
 a maximum damping of about 7e3·A_mush, compared with A_mush/B = 1e4·A_mush in
 Farzadi's form, so the two are equivalent in practice. If the TF wants
-Farzadi's exact form, it is a three-line edit of `pU/UEqn.H`. That would be
-our only solver modification, and it needs a rebuild.
+Farzadi's exact form, it is a three-line edit of `pU/UEqn.H`, kept as a
+patch in `setup/patches/` like the Marangoni fix below, and it needs a rebuild.
+
+### Flow solve and the one solver patch
+
+All AdditiveFOAM tutorials run conduction-only (`nOuterCorrectors 0` in
+`fvSolution`), which skips the momentum and pressure equations entirely. Our
+template uses `nOuterCorrectors 1`. With flow on, the stock `marangoni` BC lets
+the pressure step put flux through the top of our closed domain and the run
+aborts; `setup/patches/marangoni-assignable.patch` fixes this (details in
+`setup/patches/README.md`). The install script applies it before building.
 
 ### Symmetry plane and laser power
 
@@ -85,8 +94,8 @@ passed).
 
 | README quantity | Source |
 |---|---|
-| Temperature field, max T; velocity field, max \|U\| | Time directories (`writeInterval`); `postProcessing/fieldMinMax` every step |
-| Time of first melting | First time `max(T) ≥ T_liq` in `fieldMinMax` |
+| Temperature field, max T; velocity field, max \|U\| | Time directories (`writeInterval`); `postProcessing/Tmax`, `postProcessing/Umax` (volFieldValue) every step |
+| Time of first melting | First time `max(T) ≥ T_liq` in `postProcessing/Tmax` |
 | Pool length / width / depth vs time | `postProcessing/meltPoolDimensions/<iso>.csv` at liquidus and solidus. **Width is the half-width on our half domain: multiply by 2.** |
 | Liquid-fraction distribution | `alpha.solid` field (liquid = 1 − alpha.solid) |
 | Cooling rate, G, R, G/R, G·R | `solidificationData` (x, y, z, t_s, cooling rate, G vector, v) within the ROI box |
@@ -96,8 +105,8 @@ passed).
 
 1. **Smoke test:** the unmodified `AMB2018-02-B` tutorial (docs/SETUP.md).
 2. **Mesh check:** `blockMesh && checkMesh` on all three cases.
-3. **Conduction only:** set `dSigmadT 0` and `beta 0`, which removes both
-   flow drivers so U stays zero. Compare the far field with Rosenthal
+3. **Conduction only:** set `nOuterCorrectors 0` in `system/fvSolution`
+   (skips the flow solve, so U stays zero). Compare the far field with Rosenthal
    (`scripts/estimate_pool.py`), and check the absorbed power: a pool that is
    2× too large usually means the power was halved or doubled by mistake.
    This run is also the "no Marangoni" reference for showing the effect of

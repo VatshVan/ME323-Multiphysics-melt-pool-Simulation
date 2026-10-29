@@ -318,13 +318,28 @@ functions
         box             (0 0 {-rz:.6g}) ({L:.6g} {ry:.6g} 0);
     }}
 
-    // Peak temperature and velocity magnitude vs time
-    fieldMinMax
+    // Peak temperature and velocity magnitude vs time (OpenFOAM-14 has no
+    // fieldMinMax; volFieldValue replaces it)
+    Tmax
     {{
         libs            ("libfieldFunctionObjects.so");
-        type            fieldMinMax;
-        mode            magnitude;
-        fields          (T U);
+        type            volFieldValue;
+        cellZone        all;
+        operation       max;
+        fields          (T);
+        writeFields     false;
+        writeControl    timeStep;
+        writeInterval   1;
+    }}
+
+    Umax
+    {{
+        libs            ("libfieldFunctionObjects.so");
+        type            volFieldValue;
+        cellZone        all;
+        operation       maxMag;
+        fields          (U);
+        writeFields     false;
         writeControl    timeStep;
         writeInterval   1;
     }}

@@ -39,6 +39,22 @@ then
     git -C "$PROJECT_DIR" submodule update --init external/AdditiveFOAM
 fi
 
+# Local fixes to AdditiveFOAM (see setup/patches/README.md); skip if applied
+for patch in "$PROJECT_DIR"/setup/patches/*.patch
+do
+    if git -C "$ADDITIVEFOAM_DIR" apply --check "$patch" 2>/dev/null
+    then
+        echo "==> Applying $(basename "$patch")"
+        git -C "$ADDITIVEFOAM_DIR" apply "$patch"
+    elif git -C "$ADDITIVEFOAM_DIR" apply --reverse --check "$patch" 2>/dev/null
+    then
+        echo "==> Already applied: $(basename "$patch")"
+    else
+        echo "ERROR: cannot apply $patch to AdditiveFOAM" >&2
+        exit 1
+    fi
+done
+
 # OpenFOAM's bashrc references unset variables, so relax -u while sourcing
 set +u
 . "$OPENFOAM_BASHRC"

@@ -1,0 +1,21 @@
+diff --git a/applications/solvers/additiveFoam/derivedFvPatchFields/marangoni/marangoniFvPatchVectorField.H b/applications/solvers/additiveFoam/derivedFvPatchFields/marangoni/marangoniFvPatchVectorField.H
+index 71c5ea3..6b3a08d 100644
+--- a/applications/solvers/additiveFoam/derivedFvPatchFields/marangoni/marangoniFvPatchVectorField.H
++++ b/applications/solvers/additiveFoam/derivedFvPatchFields/marangoni/marangoniFvPatchVectorField.H
+@@ -124,6 +124,16 @@ public:
+ 
+     // Member Functions
+ 
++        // Attributes
++
++            //- Return false: this patch field is not altered by assignment,
++            //  so constrainHbyA keeps the zero normal velocity on the patch
++            virtual bool assignable() const
++            {
++                return false;
++            }
++
++
+         // Mapping functions
+ 
+             //- Map the given fvPatchField onto this fvPatchField
