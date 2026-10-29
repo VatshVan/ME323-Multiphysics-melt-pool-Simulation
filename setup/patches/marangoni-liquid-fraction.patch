@@ -1,0 +1,33 @@
+diff --git a/applications/solvers/additiveFoam/derivedFvPatchFields/marangoni/marangoniFvPatchVectorField.C b/applications/solvers/additiveFoam/derivedFvPatchFields/marangoni/marangoniFvPatchVectorField.C
+index cf5f5ba..25d36e0 100644
+--- a/applications/solvers/additiveFoam/derivedFvPatchFields/marangoni/marangoniFvPatchVectorField.C
++++ b/applications/solvers/additiveFoam/derivedFvPatchFields/marangoni/marangoniFvPatchVectorField.C
+@@ -158,11 +158,27 @@ Foam::marangoniFvPatchVectorField::snGrad() const
+ 
+     scalar coeff_(dSigmadT_ / mu_.value());
+ 
++    // Marangoni shear acts only on molten surface: scale by the liquid
++    // fraction of the face cells, mu dU/dn = fL dSigma/dT gradS(T)
++    // (Farzadi et al. 2008, Eq. 6)
++    const volScalarField& alphaSolid =
++        this->internalField().mesh().lookupObject<volScalarField>
++        (
++            "alpha.solid"
++        );
++
++    const scalarField fL
++    (
++        1.0 - alphaSolid.boundaryField()[this->patch().index()]
++            .patchInternalField()
++    );
++
+     // calculate the surface normal gradient on the patch
+     return
+     (
+         transform(I - sqr(nHat), pif) - pif
+-      + coeff_*transform(I - sqr(nHat), tGrad) / this->patch().deltaCoeffs()
++      + coeff_*fL*transform(I - sqr(nHat), tGrad)
++       /this->patch().deltaCoeffs()
+     )*this->patch().deltaCoeffs();
+ }
+ 

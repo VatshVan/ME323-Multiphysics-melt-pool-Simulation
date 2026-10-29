@@ -1,19 +1,19 @@
 {
-  "_readme": "Single source of truth for all cases. Every value has a status: CONFIRMED (agreed with TF), PENDING (placeholder, must be confirmed), or DERIVED (computed from other entries). SI units throughout. Edit here, then re-run scripts/make_cases.py.",
+  "_readme": "Single source of truth for all cases. Every value has a status: CONFIRMED (given by the user/TF), CHOSEN (our choice, reasoning in the note), SOURCED (from a cited reference, see materials/Ti6Al4V_sources.md) or DERIVED (computed from other entries). SI units throughout. Edit here, then re-run scripts/make_cases.py.",
 
   "material": {
-    "file": "materials/Al_pure_Farzadi2008.cfg",
-    "status": "PENDING",
-    "note": "Pure Al from Farzadi et al. (2008) Table 1 - the only paper with a complete constant-property set (k, cp, mu, Lf, dSigma/dT, beta). Swap for Al-1.5Fe (Pariona 2018) if the TF wants that alloy."
+    "file": "materials/Ti6Al4V.cfg",
+    "status": "CONFIRMED",
+    "note": "Ti-6Al-4V (user choice). Property sources: materials/Ti6Al4V_sources.md."
   },
 
   "geometry": {
-    "length_x":      {"value": 18.0e-3, "status": "PENDING", "note": "Multiple of 0.6 mm so 200/150/100 um all give integer cell counts."},
-    "half_width_y":  {"value": 5.0e-3,  "status": "CONFIRMED", "note": "10 mm full width, symmetry plane y=0 on the track centreline."},
+    "length_x":      {"value": 50.0e-3, "status": "CONFIRMED", "note": "Block length along the laser track."},
+    "half_width_y":  {"value": 10.0e-3, "status": "CONFIRMED", "note": "Modelled half width; symmetry plane y=0 on the track centreline, real block 20 mm wide."},
     "depth_z":       {"value": 8.0e-3,  "status": "CONFIRMED", "note": "Top surface z=0, bottom z=-8 mm."},
-    "roi_y":         {"value": 2.4e-3,  "status": "PENDING", "note": "Half of the ~5 mm ROI width, rounded to a 0.6 mm multiple."},
-    "roi_z":         {"value": 4.8e-3,  "status": "PENDING", "note": "ROI depth (5 mm rounded down to a 0.6 mm multiple)."},
-    "outer_cell":    {"value": 0.6e-3,  "status": "PENDING", "note": "Target cell size at the far boundaries outside the ROI (graded)."}
+    "roi_y":         {"value": 5.0e-3,  "status": "CONFIRMED", "note": "Fine-grid corner, 5 mm from the symmetry plane."},
+    "roi_z":         {"value": 5.0e-3,  "status": "CONFIRMED", "note": "Fine-grid corner, 5 mm below the top surface."},
+    "outer_cell":    {"value": 0.6e-3,  "status": "CHOSEN", "note": "Target cell size at the far boundaries outside the ROI (graded)."}
   },
 
   "mesh_study": {
@@ -21,38 +21,38 @@
   },
 
   "laser": {
-    "power":         {"value": 2000.0,  "status": "PENDING", "note": "Nominal 2 kW Yb-fibre laser (Pariona 2018). Actual power not stated in that paper."},
-    "absorptivity":  {"value": 0.5,     "status": "PENDING", "note": "Placeholder. Real Al at 1.06 um is ~0.05-0.15; at that level the pool is far below 1 mm (see scripts/estimate_pool.py)."},
-    "radius":        {"value": 300e-6,  "status": "PENDING", "note": "D4sigma (1/e^2) radius; 600 um beam diameter from Pariona 2018."},
-    "depth":         {"value": 50e-6,   "status": "PENDING", "note": "Volumetric penetration depth of the superGaussian source; ~surface heating."},
+    "power":         {"value": 1500.0,  "status": "CHOSEN", "note": "Sized with scripts/estimate_pool.py for a pool about as wide as the 3 mm beam; verified against T_boil in the trial run."},
+    "absorptivity":  {"value": 0.35,    "status": "SOURCED", "note": "Much et al. 2024 (arXiv:2401.12114) Table 1, after Khairallah et al. 2016."},
+    "radius":        {"value": 1.5e-3,  "status": "CONFIRMED", "note": "3 mm beam diameter (user); taken as the 1/e^2 (D4sigma) radius."},
+    "depth":         {"value": 50e-6,   "status": "CHOSEN", "note": "Penetration depth of AdditiveFOAM's volumetric superGaussian; ~surface heating. Same in all meshes."},
     "k":             {"value": 2.0,     "status": "CONFIRMED", "note": "k=2 makes the superGaussian a plain Gaussian."},
-    "speed":         {"value": 0.02,    "status": "PENDING", "note": "20 mm/s (lowest Pariona speed, strongest Marangoni effect)."},
-    "x_start":       {"value": 3.0e-3,  "status": "PENDING"},
-    "x_end":         {"value": 15.0e-3, "status": "PENDING"},
-    "cooling_time":  {"value": 0.2,     "status": "PENDING", "note": "Laser-off time simulated after the track to capture solidification/cooling."}
+    "speed":         {"value": 0.005,   "status": "CONFIRMED", "note": "5 mm/s (user)."},
+    "x_start":       {"value": 5.0e-3,  "status": "CHOSEN", "note": "Beam starts 5 mm (> 3 beam radii) from the x=0 end."},
+    "x_end":         {"value": 45.0e-3, "status": "CHOSEN", "note": "Beam stops 5 mm before the x=L end."},
+    "cooling_time":  {"value": 1.0,     "status": "CHOSEN", "note": "Laser-off time after the track, to capture solidification of the last pool."}
   },
 
   "thermal_bc": {
-    "T_initial":       {"value": 293.15, "status": "PENDING"},
-    "T_ambient":       {"value": 293.15, "status": "PENDING"},
-    "h_top":           {"value": 25.0,   "status": "PENDING", "note": "Convection coefficient, W/m2K (Gao 2021 uses 25)."},
-    "emissivity_top":  {"value": 0.1,    "status": "PENDING"},
-    "h_sides":         {"value": 25.0,   "status": "PENDING"},
-    "emissivity_sides":{"value": 0.1,    "status": "PENDING"},
-    "h_bottom":        {"value": 25.0,   "status": "PENDING", "note": "Workpiece-workbench coefficient h_d in Pariona Eq. 8; no radiation at bottom."}
+    "T_initial":       {"value": 293.15, "status": "SOURCED", "note": "Room temperature, Gao et al. 2021 (papers/)."},
+    "T_ambient":       {"value": 293.15, "status": "SOURCED", "note": "Gao et al. 2021."},
+    "h_top":           {"value": 25.0,   "status": "SOURCED", "note": "W/m2K, Gao et al. 2021 Eq. 10."},
+    "emissivity_top":  {"value": 0.54,   "status": "SOURCED", "note": "Jelinek et al. 2020 (arXiv:2007.01433) Table 1."},
+    "h_sides":         {"value": 25.0,   "status": "SOURCED", "note": "Gao et al. 2021 Eq. 16."},
+    "emissivity_sides":{"value": 0.54,   "status": "SOURCED", "note": "Jelinek et al. 2020."},
+    "h_bottom":        {"value": 25.0,   "status": "CHOSEN", "note": "Workpiece-workbench h_d (Pariona Eq. 8) has no value given; Gao's 25 used; no radiation at the bottom."}
   },
 
   "mushy_zone": {
-    "A_mush": {"value": 1.0e8, "status": "PENDING", "note": "Read from the TF notes as 'Aroush ~ 1e8': almost certainly the Carman-Kozeny mushy-zone constant C (kg/m3/s) of Farzadi Eq. 2."},
-    "B":      {"value": 1.0e-4, "status": "PENDING", "note": "Small constant avoiding division by zero in C(1-fL)^2/(fL^3+B). AdditiveFOAM caps solid fraction at 0.95 instead, so B is not used unless we modify UEqn.H."},
-    "DAS":    {"status": "DERIVED", "note": "AdditiveFOAM uses D = nu*180/DAS^2 * fs^2/(1-fs)^3, so DAS = sqrt(180*mu/A_mush) (~50 um for Al)."}
+    "A_mush": {"value": 1.0e8, "status": "CONFIRMED", "note": "TF notes 'Aroush ~ 1e8': Carman-Kozeny constant C of Farzadi Eq. 2 (kg/m3/s)."},
+    "B":      {"value": 1.0e-4, "status": "CONFIRMED", "note": "TF notes. AdditiveFOAM caps solid fraction at 0.95 instead, so B is not used unless we modify UEqn.H."},
+    "DAS":    {"status": "DERIVED", "note": "AdditiveFOAM uses D = nu*180/DAS^2 * fs^2/(1-fs)^3, so DAS = sqrt(180*mu/A_mush)."}
   },
 
   "numerics": {
-    "maxCo":          {"value": 0.5,   "status": "CONFIRMED", "note": "AdditiveFOAM tutorial default."},
-    "maxDi":          {"value": 10.0,  "status": "CONFIRMED", "note": "AdditiveFOAM tutorial default."},
-    "maxAlphaCo":     {"value": 1.0,   "status": "CONFIRMED", "note": "AdditiveFOAM tutorial default."},
-    "write_interval": {"value": 0.01,  "status": "PENDING"},
-    "n_procs":        {"value": 8,     "status": "PENDING", "note": "Machine has 12 logical cores."}
+    "maxCo":          {"value": 0.5,   "status": "CHOSEN", "note": "AdditiveFOAM tutorial default."},
+    "maxDi":          {"value": 10.0,  "status": "CHOSEN", "note": "AdditiveFOAM tutorial default."},
+    "maxAlphaCo":     {"value": 1.0,   "status": "CHOSEN", "note": "AdditiveFOAM tutorial default."},
+    "write_interval": {"value": 0.25,  "status": "CHOSEN", "note": "Field snapshots every 1.25 mm of travel; Tmax/Umax/pool dimensions are logged every step regardless."},
+    "n_procs":        {"value": 8,     "status": "CHOSEN", "note": "Machine has 12 logical cores."}
   }
 }

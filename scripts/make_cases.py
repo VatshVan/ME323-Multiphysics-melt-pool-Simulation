@@ -56,13 +56,32 @@ def val(section, key):
 
 
 def check_multiple(length, dx, name):
-    n = length/dx
-    if abs(n - round(n)) > 1e-6:
+    """Nearest whole number of cells; the actual cell size may differ from dx
+    by a few percent (e.g. 5 mm / 150 um = 33.3 -> 33 cells of 151.5 um)."""
+    n = max(1, int(round(length/dx)))
+    if abs(length/n - dx)/dx > 0.05:
         raise SystemExit(
-            f"{name} = {length*1e3:g} mm is not a multiple of the cell size "
-            f"{dx*1e6:g} um ({n:.3f} cells); use a multiple of 0.6 mm."
+            f"{name} = {length*1e3:g} mm gives cells of {length/n*1e6:.1f} um, "
+            f"more than 5% off the target {dx*1e6:g} um."
         )
-    return int(round(n))
+    return n
+
+
+def smooth_step(x):
+    """C1-continuous step: 0 for x < -1/2, 1 for x > 1/2, (1 + sin(pi x))/2
+    in between. Same support as Gao et al. (2021) Eq. 8."""
+    return 0.5*(1.0 + math.sin(math.pi*min(max(x, -0.5), 0.5)))
+
+
+def smooth_thermo_path(T_sol, T_liq, n=21):
+    """Solid fraction alpha.solid(T) = 1 - H((T - T_m)/(T_liq - T_sol)),
+    T_m = (T_sol + T_liq)/2, tabulated for AdditiveFOAM's thermoPath."""
+    T_m, dT = 0.5*(T_sol + T_liq), T_liq - T_sol
+    rows = []
+    for i in range(n):
+        T = T_sol + dT*i/(n - 1)
+        rows.append(f"    ({T:.6g} {1.0 - smooth_step((T - T_m)/dT):.6f})")
+    return "thermoPath\n(\n" + "\n".join(rows) + "\n);"
 
 
 def graded_segment(length, d_fine, d_coarse):
@@ -224,6 +243,16 @@ def transport_properties(cfg):
     )
     if n != 1:
         raise SystemExit("could not find DAS entry in material file")
+
+    # Replace the (T_sol 1) (T_liq 0) endpoints with the smoothed solid fraction
+    path = re.search(r"^thermoPath(?:\s*//[^\n]*)?\s*\(\s*\(\s*([0-9.eE+-]+)\s+1\s*\)\s*"
+                     r"\(\s*([0-9.eE+-]+)\s+0\s*\)\s*\);", text, re.M)
+    if path is None:
+        raise SystemExit("thermoPath must list exactly (T_sol 1) (T_liq 0)")
+    T_sol, T_liq = float(path.group(1)), float(path.group(2))
+    text = (text[:path.start()]
+            + "// cosine-smoothed solid fraction, scripts/make_cases.py\n"
+            + smooth_thermo_path(T_sol, T_liq) + text[path.end():])
     body = f"// Material: {cfg['material']['file']}\n\n" + text
     return foam_file("dictionary", "constant", "transportProperties", body), DAS
 
@@ -316,6 +345,15 @@ functions
         libs            ("libadditiveFoamFunctionObjects.so");
         type            solidificationData;
         box             (0 0 {-rz:.6g}) ({L:.6g} {ry:.6g} 0);
+    }}
+
+    // Solid fraction is not written by the solver itself; liquid = 1 - alpha.solid
+    writeAlphaSolid
+    {{
+        libs            ("libutilityFunctionObjects.so");
+        type            writeObjects;
+        objects         (alpha.solid);
+        writeControl    writeTime;
     }}
 
     // Peak temperature and velocity magnitude vs time (OpenFOAM-14 has no

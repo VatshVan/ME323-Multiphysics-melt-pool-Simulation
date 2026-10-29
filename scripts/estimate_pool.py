@@ -24,20 +24,25 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def material(cfg):
+    """Constant properties for the estimates. Polynomial k and Cp are
+    evaluated at the mean solid temperature (T0 + T_sol)/2 for the solid and
+    at T_liq for the liquid."""
     text = (ROOT/cfg["material"]["file"]).read_text()
 
     def scalar(key):
         return float(re.search(rf"^{key}\s+(?:\[[^\]]*\]\s+)?([0-9.eE+-]+);", text, re.M).group(1))
 
-    def poly0(phase, key):
+    def poly(phase, key, T):
         block = re.search(rf"^{phase}\s*\{{(.*?)\}}", text, re.M | re.S).group(1)
-        return float(re.search(rf"{key}\s+\(\s*([0-9.eE+-]+)", block).group(1))
+        a = re.search(rf"{key}\s+\(\s*([0-9.eE+-]+)\s+([0-9.eE+-]+)\s+([0-9.eE+-]+)", block).groups()
+        return float(a[0]) + float(a[1])*T + float(a[2])*T**2
 
     path = re.findall(r"\(\s*([0-9.eE+-]+)\s+([01])\s*\)", text)
     temps = {int(a): float(T) for T, a in path}
+    T_s = 0.5*(cfg["thermal_bc"]["T_initial"]["value"] + temps[1])
     return {
-        "k_s": poly0("solid", "kappa"), "k_l": poly0("liquid", "kappa"),
-        "cp": poly0("solid", "Cp"), "rho": scalar("rho"), "mu": scalar("mu"),
+        "k_s": poly("solid", "kappa", T_s), "k_l": poly("liquid", "kappa", temps[0]),
+        "cp": poly("solid", "Cp", T_s), "rho": scalar("rho"), "mu": scalar("mu"),
         "dSigmadT": scalar("dSigmadT"), "T_sol": temps[1], "T_liq": temps[0],
     }
 
@@ -65,7 +70,7 @@ def main():
     sizes = cfg["mesh_study"]["cell_sizes"]["value"]
     q_cfg = las["power"]["value"]*las["absorptivity"]["value"]
 
-    print(f"Material {cfg['material']['file']}: k_s={m['k_s']} W/mK, "
+    print(f"Material {cfg['material']['file']}: k_s={m['k_s']:.1f} W/mK, cp={m['cp']:.0f} J/kgK, "
           f"T_liq={m['T_liq']} K, scan speed {v*1e3:g} mm/s\n")
     print("Rosenthal (conduction only)      full width  depth   length  "
           + "  ".join(f"depth/{d*1e6:g}um" for d in sizes))
