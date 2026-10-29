@@ -24,6 +24,7 @@ materials/                Ti6Al4V.cfg (+ cited sources), pure-Al reference file
 templates/case/           static OpenFOAM case files (fields, numerics, Allrun)
 scripts/make_cases.py     generates cases/mesh_200um, mesh_150um, mesh_100um
 scripts/estimate_pool.py  Rosenthal pool size, Marangoni velocity, time-step estimates
+scripts/analyze_case.py   history plots, pool metrics, field sections -> results/<case>/
 setup/                    install script + per-terminal environment
 external/AdditiveFOAM     solver source (git submodule, v2.0.0, OpenFOAM-14)
 docs/SETUP.md             installation steps

@@ -1,0 +1,261 @@
+#!/usr/bin/env python3
+"""Post-process one finished case: time histories, melt-pool metrics and
+field sections.
+
+Writes to results/<case name>/:
+    history.png     T_max, |U|_max and pool length/width/depth vs time
+    sections_<t>.png   longitudinal (y = 0) and cross-section (x = beam)
+                    cuts: temperature, solidus/liquidus, liquid fraction 0.5
+                    and velocity vectors, mirrored to the full width
+    summary.json    melting onset, quasi-steady averages, solidification time
+
+Needs a reconstructed case (Allrun does this) and OpenFOAM in the
+environment (source setup/env.sh) for the field sections.
+
+Usage:
+    python scripts/analyze_case.py cases/mesh_200um
+    python scripts/analyze_case.py cases/mesh_200um --no-sections
+"""
+
+import argparse
+import json
+import re
+import subprocess
+from pathlib import Path
+
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import matplotlib.tri as mtri
+import numpy as np
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def read_dat(case, name):
+    """volFieldValue output, concatenated over restart directories."""
+    rows = []
+    for f in sorted((case/"postProcessing"/name).glob("*/volFieldValue.dat"),
+                    key=lambda p: float(p.parent.name)):
+        rows.append(np.loadtxt(f, comments="#"))
+    data = np.vstack(rows)
+    return data[:, 0], data[:, 1]
+
+
+def read_pool(case, iso):
+    f = case/"postProcessing"/"meltPoolDimensions"/f"{iso:g}.csv"
+    d = np.loadtxt(f, delimiter=",", skiprows=1)
+    # columns: time, length, half width, depth
+    return d[:, 0], d[:, 1], 2.0*d[:, 2], d[:, 3]
+
+
+def solidus_liquidus(case):
+    text = (case/"constant"/"transportProperties").read_text()
+    body = re.search(r"^thermoPath\s*\((.*?)^\);", text, re.M | re.S).group(1)
+    pts = np.array(re.findall(r"\(\s*([0-9.eE+-]+)\s+([0-9.eE+-]+)\s*\)", body), float)
+    return pts[:, 0].min(), pts[:, 0].max()
+
+
+def scan(case):
+    """Laser line segment from constant/scanPath: (x0, x1, speed, t_off)."""
+    rows = [l.split() for l in (case/"constant"/"scanPath").read_text().splitlines()[1:] if l.strip()]
+    x0 = float(rows[0][1])
+    line = next(r for r in rows if r[0] == "0")
+    x1, v = float(line[1]), float(line[5])
+    return x0, x1, v, (x1 - x0)/v
+
+
+def first(t, mask):
+    i = np.flatnonzero(mask)
+    return float(t[i[0]]) if i.size else None
+
+
+def history(case, out):
+    Ts, Tl = solidus_liquidus(case)
+    x0, x1, v, t_off = scan(case)
+    tT, Tmax = read_dat(case, "Tmax")
+    tU, Umax = read_dat(case, "Umax")
+    tp, L, W, D = read_pool(case, Tl)
+    tps, Ls, Ws, Ds = read_pool(case, Ts)
+
+    # Quasi-steady window: middle of the track, away from start and end
+    win = (tp > 0.4*t_off) & (tp < 0.9*t_off)
+    winT = (tT > 0.4*t_off) & (tT < 0.9*t_off)
+    winU = (tU > 0.4*t_off) & (tU < 0.9*t_off)
+
+    def stat(a, m):
+        return {"mean": float(a[m].mean()), "std": float(a[m].std())} if m.any() else None
+
+    after = tps > t_off
+    summary = {
+        "case": case.name,
+        "solidus_K": Ts, "liquidus_K": Tl,
+        "laser_off_s": t_off,
+        "first_melting_s": first(tT, Tmax >= Ts),
+        "fully_liquid_surface_s": first(tT, Tmax >= Tl),
+        "pool_fully_solidified_s": first(tps[after], Ls[after] <= 0.0),
+        "peak_T_K": float(Tmax.max()),
+        "peak_U_m_s": float(Umax.max()),
+        "quasi_steady_window_s": [0.4*t_off, 0.9*t_off],
+        "quasi_steady": {
+            "T_max_K": stat(Tmax, winT),
+            "U_max_m_s": stat(Umax, winU),
+            "pool_length_mm": stat(L*1e3, win),
+            "pool_width_full_mm": stat(W*1e3, win),
+            "pool_depth_mm": stat(D*1e3, win),
+        },
+    }
+
+    fig, ax = plt.subplots(3, 1, figsize=(8, 9), sharex=True)
+    ax[0].plot(tT, Tmax, lw=1)
+    for T, name in ((Ts, "solidus"), (Tl, "liquidus")):
+        ax[0].axhline(T, ls=":", lw=0.8, c="k")
+        ax[0].text(tT[-1], T, f" {name}", va="center", fontsize=8)
+    ax[0].set_ylabel("T_max [K]")
+    ax[1].plot(tU, Umax, lw=1)
+    ax[1].set_ylabel("|U|_max [m/s]")
+    ax[2].plot(tp, L*1e3, label="length", lw=1)
+    ax[2].plot(tp, W*1e3, label="width (full)", lw=1)
+    ax[2].plot(tp, D*1e3, label="depth", lw=1)
+    ax[2].set_ylabel(f"pool at liquidus {Tl:g} K [mm]")
+    ax[2].set_xlabel("time [s]")
+    ax[2].legend(fontsize=8)
+    for a in ax:
+        a.axvline(t_off, c="r", lw=0.8, ls="--")
+        a.axvspan(0.4*t_off, 0.9*t_off, color="0.9", zorder=0)
+        a.grid(alpha=0.3)
+    ax[0].set_title(f"{case.name}: laser off at {t_off:g} s (red), "
+                    "quasi-steady window shaded", fontsize=9)
+    fig.tight_layout()
+    fig.savefig(out/"history.png", dpi=150)
+    plt.close(fig)
+    return summary
+
+
+SECTIONS = """FoamFile {{ format ascii; class dictionary; object sections; }}
+sections
+{{
+    type            surfaces;
+    libs            ("libsampling.so");
+    surfaceFormat   raw;
+    interpolationScheme cellPoint;
+    fields          (T U alpha.solid);
+    surfaces
+    {{
+        longitudinal {{ type cutPlane; point (0 1e-6 0); normal (0 1 0); interpolate false; }}
+        crossSection {{ type cutPlane; point ({x:.6g} 0 0); normal (1 0 0); interpolate false; }}
+    }}
+}}
+"""
+
+
+def read_raw(f):
+    cols = open(f).readline().lstrip("#").split()
+    return dict(zip(cols, np.loadtxt(f, comments="#").T))
+
+
+def sections(case, out, times):
+    Ts, Tl = solidus_liquidus(case)
+    x0, x1, v, t_off = scan(case)
+    for t in times:
+        xb = x0 + v*min(t, t_off)
+        x_cut = xb if t <= t_off else x1 - 1e-3
+        (case/"system"/"sections").write_text(SECTIONS.format(x=x_cut))
+        subprocess.run(["foamPostProcess", "-case", str(case), "-dict", "system/sections",
+                        "-time", t_name(case, t)], check=True, capture_output=True)
+        d = case/"postProcessing"/"sections"/t_name(case, t)
+        lon, crs = read_raw(d/"longitudinal.xy"), read_raw(d/"crossSection.xy")
+
+        fig, ax = plt.subplots(2, 1, figsize=(9, 7.5))
+        levels = np.linspace(293, max(Tl + 50, lon["T"].max()), 30)
+        # longitudinal y = 0: x along track, z depth
+        tri = mtri.Triangulation(lon["face_x"]*1e3, lon["face_z"]*1e3)
+        c = ax[0].tricontourf(tri, lon["T"], levels=levels, cmap="inferno")
+        ax[0].tricontour(tri, lon["T"], levels=[Ts, Tl], colors=["c", "w"], linewidths=0.8)
+        if "alpha.solid" in lon:
+            ax[0].tricontour(tri, lon["alpha.solid"], levels=[0.5], colors="lime", linewidths=0.6)
+        sel = lon["T"] > Ts
+        ax[0].quiver(lon["face_x"][sel]*1e3, lon["face_z"][sel]*1e3,
+                     lon["U_x"][sel], lon["U_z"][sel], color="w", scale=3, width=0.002)
+        ax[0].set_xlim(max(lon["face_x"].min()*1e3, xb*1e3 - 9),
+                       min(lon["face_x"].max()*1e3, xb*1e3 + 4))
+        ax[0].set_ylim(-3, 0)
+        ax[0].set_aspect("equal")
+        ax[0].set_xlabel("x [mm]")
+        ax[0].set_ylabel("z [mm]")
+        ax[0].set_title(f"t = {t:g} s, beam at x = {xb*1e3:.1f} mm"
+                        f"{' (laser off)' if t > t_off else ''}: symmetry plane y = 0", fontsize=9)
+        fig.colorbar(c, ax=ax[0], label="T [K]")
+
+        # cross-section at the beam, mirrored to the full width
+        y = np.concatenate([crs["face_y"], -crs["face_y"]])*1e3
+        z = np.concatenate([crs["face_z"], crs["face_z"]])*1e3
+        T = np.concatenate([crs["T"], crs["T"]])
+        Uy = np.concatenate([crs["U_y"], -crs["U_y"]])
+        Uz = np.concatenate([crs["U_z"], crs["U_z"]])
+        tri = mtri.Triangulation(y, z)
+        c = ax[1].tricontourf(tri, T, levels=levels, cmap="inferno")
+        ax[1].tricontour(tri, T, levels=[Ts, Tl], colors=["c", "w"], linewidths=0.8)
+        if "alpha.solid" in crs:
+            ax[1].tricontour(tri, np.concatenate([crs["alpha.solid"]]*2), levels=[0.5],
+                             colors="lime", linewidths=0.6)
+        sel = T > Ts
+        ax[1].quiver(y[sel], z[sel], Uy[sel], Uz[sel], color="w", scale=3, width=0.002)
+        ax[1].set_xlim(-4.5, 4.5)
+        ax[1].set_ylim(-3, 0)
+        ax[1].set_aspect("equal")
+        ax[1].set_xlabel("y [mm] (mirrored about the symmetry plane)")
+        ax[1].set_ylabel("z [mm]")
+        ax[1].set_title(f"cross-section x = {x_cut*1e3:.1f} mm "
+                        "(cyan solidus, white liquidus, green 50% liquid)", fontsize=9)
+        fig.colorbar(c, ax=ax[1], label="T [K]")
+        fig.tight_layout()
+        fig.savefig(out/f"sections_{t:g}s.png", dpi=150)
+        plt.close(fig)
+
+
+def written_times(case):
+    ts = []
+    for p in case.iterdir():
+        try:
+            if p.is_dir() and float(p.name) > 0 and (p/"T").exists():
+                ts.append(float(p.name))
+        except ValueError:
+            pass
+    return sorted(ts)
+
+
+def t_name(case, t):
+    return next(p.name for p in case.iterdir() if p.is_dir() and _isfloat(p.name) and float(p.name) == t)
+
+
+def _isfloat(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
+
+
+def main():
+    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("case", type=Path)
+    p.add_argument("--no-sections", action="store_true", help="skip the field sections")
+    p.add_argument("--times", type=float, nargs="*", help="section times (default: all written)")
+    args = p.parse_args()
+
+    case = args.case.resolve()
+    out = ROOT/"results"/case.name
+    out.mkdir(parents=True, exist_ok=True)
+
+    summary = history(case, out)
+    (out/"summary.json").write_text(json.dumps(summary, indent=2) + "\n")
+    print(json.dumps(summary, indent=2))
+
+    if not args.no_sections:
+        sections(case, out, args.times or written_times(case))
+    print(f"wrote {out.relative_to(ROOT)}")
+
+
+if __name__ == "__main__":
+    main()
