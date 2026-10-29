@@ -1,0 +1,58 @@
+{
+  "_readme": "Single source of truth for all cases. Every value has a status: CONFIRMED (agreed with TF), PENDING (placeholder, must be confirmed), or DERIVED (computed from other entries). SI units throughout. Edit here, then re-run scripts/make_cases.py.",
+
+  "material": {
+    "file": "materials/Al_pure_Farzadi2008.cfg",
+    "status": "PENDING",
+    "note": "Pure Al from Farzadi et al. (2008) Table 1 - the only paper with a complete constant-property set (k, cp, mu, Lf, dSigma/dT, beta). Swap for Al-1.5Fe (Pariona 2018) if the TF wants that alloy."
+  },
+
+  "geometry": {
+    "length_x":      {"value": 18.0e-3, "status": "PENDING", "note": "Multiple of 0.6 mm so 200/150/100 um all give integer cell counts."},
+    "half_width_y":  {"value": 5.0e-3,  "status": "CONFIRMED", "note": "10 mm full width, symmetry plane y=0 on the track centreline."},
+    "depth_z":       {"value": 8.0e-3,  "status": "CONFIRMED", "note": "Top surface z=0, bottom z=-8 mm."},
+    "roi_y":         {"value": 2.4e-3,  "status": "PENDING", "note": "Half of the ~5 mm ROI width, rounded to a 0.6 mm multiple."},
+    "roi_z":         {"value": 4.8e-3,  "status": "PENDING", "note": "ROI depth (5 mm rounded down to a 0.6 mm multiple)."},
+    "outer_cell":    {"value": 0.6e-3,  "status": "PENDING", "note": "Target cell size at the far boundaries outside the ROI (graded)."}
+  },
+
+  "mesh_study": {
+    "cell_sizes": {"value": [200e-6, 150e-6, 100e-6], "status": "CONFIRMED"}
+  },
+
+  "laser": {
+    "power":         {"value": 2000.0,  "status": "PENDING", "note": "Nominal 2 kW Yb-fibre laser (Pariona 2018). Actual power not stated in that paper."},
+    "absorptivity":  {"value": 0.5,     "status": "PENDING", "note": "Placeholder. Real Al at 1.06 um is ~0.05-0.15; at that level the pool is far below 1 mm (see scripts/estimate_pool.py)."},
+    "radius":        {"value": 300e-6,  "status": "PENDING", "note": "D4sigma (1/e^2) radius; 600 um beam diameter from Pariona 2018."},
+    "depth":         {"value": 50e-6,   "status": "PENDING", "note": "Volumetric penetration depth of the superGaussian source; ~surface heating."},
+    "k":             {"value": 2.0,     "status": "CONFIRMED", "note": "k=2 makes the superGaussian a plain Gaussian."},
+    "speed":         {"value": 0.02,    "status": "PENDING", "note": "20 mm/s (lowest Pariona speed, strongest Marangoni effect)."},
+    "x_start":       {"value": 3.0e-3,  "status": "PENDING"},
+    "x_end":         {"value": 15.0e-3, "status": "PENDING"},
+    "cooling_time":  {"value": 0.2,     "status": "PENDING", "note": "Laser-off time simulated after the track to capture solidification/cooling."}
+  },
+
+  "thermal_bc": {
+    "T_initial":       {"value": 293.15, "status": "PENDING"},
+    "T_ambient":       {"value": 293.15, "status": "PENDING"},
+    "h_top":           {"value": 25.0,   "status": "PENDING", "note": "Convection coefficient, W/m2K (Gao 2021 uses 25)."},
+    "emissivity_top":  {"value": 0.1,    "status": "PENDING"},
+    "h_sides":         {"value": 25.0,   "status": "PENDING"},
+    "emissivity_sides":{"value": 0.1,    "status": "PENDING"},
+    "h_bottom":        {"value": 25.0,   "status": "PENDING", "note": "Workpiece-workbench coefficient h_d in Pariona Eq. 8; no radiation at bottom."}
+  },
+
+  "mushy_zone": {
+    "A_mush": {"value": 1.0e8, "status": "PENDING", "note": "Read from the TF notes as 'Aroush ~ 1e8': almost certainly the Carman-Kozeny mushy-zone constant C (kg/m3/s) of Farzadi Eq. 2."},
+    "B":      {"value": 1.0e-4, "status": "PENDING", "note": "Small constant avoiding division by zero in C(1-fL)^2/(fL^3+B). AdditiveFOAM caps solid fraction at 0.95 instead, so B is not used unless we modify UEqn.H."},
+    "DAS":    {"status": "DERIVED", "note": "AdditiveFOAM uses D = nu*180/DAS^2 * fs^2/(1-fs)^3, so DAS = sqrt(180*mu/A_mush) (~50 um for Al)."}
+  },
+
+  "numerics": {
+    "maxCo":          {"value": 0.5,   "status": "CONFIRMED", "note": "AdditiveFOAM tutorial default."},
+    "maxDi":          {"value": 10.0,  "status": "CONFIRMED", "note": "AdditiveFOAM tutorial default."},
+    "maxAlphaCo":     {"value": 1.0,   "status": "CONFIRMED", "note": "AdditiveFOAM tutorial default."},
+    "write_interval": {"value": 0.01,  "status": "PENDING"},
+    "n_procs":        {"value": 8,     "status": "PENDING", "note": "Machine has 12 logical cores."}
+  }
+}

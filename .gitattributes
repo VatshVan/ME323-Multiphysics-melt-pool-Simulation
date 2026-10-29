@@ -1,0 +1,5 @@
+# OpenFOAM dictionaries and shell scripts are read inside WSL/Linux:
+# keep LF endings even when edited on Windows.
+* text=auto eol=lf
+*.pdf binary
+*.png binary

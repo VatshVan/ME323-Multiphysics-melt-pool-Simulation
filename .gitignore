@@ -1,0 +1,19 @@
+# Generated simulation cases (re-create with scripts/make_cases.py)
+cases/*/
+!cases/README.md
+
+# OpenFOAM run artefacts (if a case is ever run in place)
+processor*/
+postProcessing/
+log.*
+*.foam
+[0-9]*.[0-9]*/
+constant/polyMesh/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Large result exports
+results/raw/

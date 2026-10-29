@@ -1,0 +1,42 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  14
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    object      U;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 1 -1 0 0 0 0];
+
+internalField   uniform (0 0 0);
+
+boundaryField
+{
+    // Flat, non-deforming free surface: zero normal velocity, tangential
+    // shear mu*dU/dn = dSigmadT*gradS(T) (dSigmadT read from transportProperties)
+    top
+    {
+        type            marangoni;
+        value           uniform (0 0 0);
+    }
+
+    "(bottom|sides)"
+    {
+        type            noSlip;
+    }
+
+    symmetry
+    {
+        type            symmetryPlane;
+    }
+}
+
+// ************************************************************************* //
