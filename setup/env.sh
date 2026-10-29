@@ -1,5 +1,5 @@
 #!/bin/bash
-# Source in each new WSL terminal:  source /mnt/d/Final_project/setup/env.sh
+# Source in each new terminal:  source setup/env.sh   (from the project root)
 # Loads OpenFOAM-14, AdditiveFOAM and the project Python venv.
 
 PROJECT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)

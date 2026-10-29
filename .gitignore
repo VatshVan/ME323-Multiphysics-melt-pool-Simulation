@@ -17,3 +17,6 @@ __pycache__/
 
 # Large result exports
 results/raw/
+
+# Setup logs
+setup/*.log

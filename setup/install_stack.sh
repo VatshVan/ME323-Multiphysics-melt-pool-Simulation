@@ -1,12 +1,11 @@
 #!/bin/bash
 #------------------------------------------------------------------------------
-# Install the simulation stack inside WSL2 Ubuntu (22.04 or 24.04):
+# Install the simulation stack on Ubuntu 22.04 or 24.04:
 #   1. OpenFOAM-14 (OpenFOAM Foundation .deb packages, installs to /opt/openfoam14)
 #   2. AdditiveFOAM (git submodule external/AdditiveFOAM, built with wmake)
 #   3. Python venv (.venv) for case generation and post-processing
 #
-# Usage (from a WSL terminal):
-#   cd /mnt/d/Final_project
+# Usage (from the project root):
 #   bash setup/install_stack.sh
 #------------------------------------------------------------------------------
 set -euo pipefail
@@ -65,5 +64,5 @@ python3 -m venv "$PROJECT_DIR/.venv"
 "$PROJECT_DIR/.venv/bin/python" -m pip install -r "$PROJECT_DIR/requirements.txt"
 
 echo
-echo "Done. In every new WSL terminal run:"
+echo "Done. In every new terminal run:"
 echo "    source $PROJECT_DIR/setup/env.sh"

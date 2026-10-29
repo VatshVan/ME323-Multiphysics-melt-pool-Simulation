@@ -24,7 +24,7 @@ materials/*.cfg           AdditiveFOAM material files (pure Al, Farzadi 2008)
 templates/case/           static OpenFOAM case files (fields, numerics, Allrun)
 scripts/make_cases.py     generates cases/mesh_200um, mesh_150um, mesh_100um
 scripts/estimate_pool.py  Rosenthal pool size, Marangoni velocity, time-step estimates
-setup/                    WSL install script + per-terminal environment
+setup/                    install script + per-terminal environment
 external/AdditiveFOAM     solver source (git submodule, v2.0.0, OpenFOAM-14)
 docs/SETUP.md             installation steps
 docs/SIMULATION_PLAN.md   how the physics maps onto AdditiveFOAM, run order, open questions
@@ -32,8 +32,8 @@ papers/                   reference papers
 ```
 
 ```bash
-# inside WSL Ubuntu (see docs/SETUP.md for the one-time install)
-source /mnt/d/Final_project/setup/env.sh
+# from the project root, on Ubuntu 22.04/24.04 (see docs/SETUP.md for the one-time install)
+source setup/env.sh
 python scripts/make_cases.py
 cd cases/mesh_200um && ./Allrun
 ```
@@ -256,7 +256,7 @@ The following must be confirmed before final production runs:
 ## Tooling and Reproducibility
 
 -   **Solver framework:** AdditiveFOAM 2.0.0 (commit `8314d3c`) on
-    OpenFOAM-14 (OpenFOAM Foundation), run in WSL2 Ubuntu 24.04.
+    OpenFOAM-14 (OpenFOAM Foundation), run natively on Ubuntu 22.04.
 -   **Coding assistance:** Codex or another repository-aware AI coding
     agent.
 -   **Case management:** keep the three mesh cases and their
