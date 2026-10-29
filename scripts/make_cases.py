@@ -401,8 +401,8 @@ def write(path, text):
         f.write(text)
 
 
-def make_case(cfg, dx):
-    case = ROOT/"cases"/f"mesh_{round(dx*1e6)}um"
+def make_case(cfg, dx, cases_dir=ROOT/"cases"):
+    case = cases_dir/f"mesh_{round(dx*1e6)}um"
     if case.exists():
         shutil.rmtree(case)
     shutil.copytree(ROOT/"templates"/"case", case)
@@ -438,15 +438,17 @@ def main():
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--config", default=ROOT/"config"/"baseline.json", type=Path)
     parser.add_argument("--only", type=float, help="generate a single cell size [m]")
+    parser.add_argument("--cases-dir", type=Path, default=ROOT/"cases",
+                        help="where to write the cases (default: cases/)")
     args = parser.parse_args()
 
     cfg = json.loads(Path(args.config).read_text())
     sizes = [args.only] if args.only else val(cfg["mesh_study"], "cell_sizes")
 
     for dx in sizes:
-        case, info = make_case(cfg, dx)
+        case, info = make_case(cfg, dx, args.cases_dir.resolve())
         m = info["mesh"]
-        print(f"{case.relative_to(ROOT)}: {m['n_cells']} cells "
+        print(f"{case}: {m['n_cells']} cells "
               f"(nx={m['nx']}, ny={m['ny']}, nz={m['nz']}), "
               f"endTime={info['end_time']:g} s, DAS={info['DAS']*1e6:.1f} um")
     print(f"PENDING parameters ({len(info['pending_parameters'])}): see config/baseline.json")
