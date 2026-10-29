@@ -19,8 +19,8 @@ pending.
 ## Repository Layout and Quick Start
 
 ```
-config/baseline.json      all physical/numerical parameters (CONFIRMED / PENDING)
-materials/*.cfg           AdditiveFOAM material files (pure Al, Farzadi 2008)
+config/baseline.json      all physical/numerical parameters (CONFIRMED / CHOSEN / SOURCED)
+materials/                Ti6Al4V.cfg (+ cited sources), pure-Al reference file
 templates/case/           static OpenFOAM case files (fields, numerics, Allrun)
 scripts/make_cases.py     generates cases/mesh_200um, mesh_150um, mesh_100um
 scripts/estimate_pool.py  Rosenthal pool size, Marangoni velocity, time-step estimates
@@ -61,25 +61,16 @@ later specifies otherwise.
 
 ## Geometry and Coordinates
 
-The current interpretation of the geometry is:
-
--   **Workpiece width:** 10 mm in the (y)-direction.
--   **Workpiece depth/thickness:** 8 mm in the negative (z)-direction.
--   **Laser travel:** along the (x)-direction.
--   **Symmetry:** model half of the physical workpiece using an
-    appropriate symmetry boundary condition.
--   **Region of interest (ROI):** a 5 mm × 5 mm region in the plane
-    perpendicular to laser travel, intended for finer spatial resolution
-    near the melt pool.
--   **Laser-affected/melt-pool region:** the discussion notes mention
-    approximately 3 mm; the exact meaning and direction of this
-    dimension still need confirmation.
-
-The exact computational-domain length in the (x)-direction, the position
-of the symmetry plane, and the ROI placement must be finalized before
-generating the production mesh. The half-domain dimensions must be
-derived from the actual symmetry plane rather than assumed from the
-sketch alone.
+-   **Material:** Ti-6Al-4V (properties and references:
+    `materials/Ti6Al4V_sources.md`).
+-   **Workpiece:** 50 mm long (x, laser travel) × 20 mm wide (y) × 8 mm
+    deep (z, top surface at z = 0).
+-   **Symmetry:** half model y ≥ 0 (10 mm), symmetry plane y = 0 on the
+    track centreline.
+-   **Fine-grid region (ROI):** 5 mm × 5 mm corner at the symmetry plane and
+    the top surface, along the whole length; graded to 0.6 mm cells outside.
+-   **Laser:** 3 mm diameter Gaussian beam (1.5 mm 1/e² radius), 5 mm/s,
+    from x = 5 to 45 mm, then 1 s with the laser off.
 
 ## Physics and Model Components
 
@@ -144,7 +135,7 @@ The notes also record two constants, read approximately as:
 Working interpretation (see `docs/SIMULATION_PLAN.md` §2): B and
 A_mush ("Aroush") of the Carman–Kozeny mushy-zone term
 `C(1−fL)²/(fL³+B)` in Farzadi et al. (2008), Eq. 2. In AdditiveFOAM this
-maps to `DAS = sqrt(180 μ / A_mush) ≈ 50 µm`.
+maps to `DAS = sqrt(180 μ / A_mush) ≈ 79 µm` for Ti-6Al-4V. The Marangoni shear is applied only on molten surface (× liquid fraction, Farzadi Eq. 6), and the solid–liquid transition uses a cosine-smoothed step (Gao 2021 Eq. 8 form); see `docs/SIMULATION_PLAN.md` §2.
 Confirm the exact names, units, meanings, and values with the TA before
 using them in a simulation. They may relate to the
 mushy-zone/phase-change formulation rather than directly to the
@@ -238,19 +229,13 @@ benchmarking are not primary deliverables in the current scope.
 
 ## Pending Inputs and Decisions
 
-The following must be confirmed before final production runs:
+Given by the user: material, block size, symmetry, ROI, beam diameter, scan
+speed, mesh sizes, A_mush and B. Chosen by us and to be confirmed with the
+TA (reasoning in `config/baseline.json` and `docs/SIMULATION_PLAN.md` §8):
 
--   Exact definitions, units, and values of the two constants in the
-    notes.
--   Laser power or absorbed power.
--   Gaussian beam radius/diameter and mathematical convention.
--   Laser scan speed and scan length.
--   Material identity and required temperature-dependent properties.
--   Exact interpretation of the approximately 3 mm dimension.
--   Computational-domain length along (x).
--   Exact symmetry-plane location and ROI placement.
--   Initial temperature and numerical values for convection/radiation
-    boundary conditions.
+-   Laser power 1.5 kW with absorptivity 0.35 (525 W absorbed).
+-   Track start/end (x = 5 → 45 mm) and 1 s cooling time.
+-   Bottom-surface heat transfer (h = 25 W/m²K, no radiation).
 -   Which outputs and comparison times the TA expects.
 
 ## Tooling and Reproducibility
