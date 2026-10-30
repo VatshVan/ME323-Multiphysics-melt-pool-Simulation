@@ -237,7 +237,7 @@ def main():
         keep = {float(r["time_s"]): r for r in old}
         keep.update({r["time_s"]: r for r in rows})
         with open(f, "w", newline="") as fh:
-            w = csv.DictWriter(fh, fieldnames=list(rows[0]))
+            w = csv.DictWriter(fh, fieldnames=list(rows[0]), lineterminator="\n")
             w.writeheader()
             w.writerows(keep[k] for k in sorted(keep))
     print(f"images -> {out.relative_to(ROOT)}" + ("" if args.no_vtu else f", VTK -> {vtu_dir}"))
