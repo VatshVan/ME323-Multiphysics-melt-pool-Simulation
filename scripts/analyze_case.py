@@ -247,12 +247,55 @@ sections
 """
 
 
+def arrows(ax, x, z, u, w, sel, max_len_mm=0.35, n_max=120):
+    """Velocity arrows in the melt, at most n_max of them, the fastest
+    max_len_mm long (in plot units, mm), so they stay inside small pools."""
+    idx = np.flatnonzero(sel)
+    if idx.size == 0:
+        return
+    idx = idx[::max(1, idx.size//n_max)]
+    vmax = float(np.hypot(u[idx], w[idx]).max()) or 1.0
+    ax.quiver(x[idx], z[idx], u[idx], w[idx], color="w", angles="xy",
+              scale_units="xy", scale=vmax/max_len_mm, width=0.003)
+    ax.text(0.99, 0.02, f"longest arrow = {vmax:.2f} m/s", color="w", fontsize=7,
+            ha="right", va="bottom", transform=ax.transAxes)
+
+
 def read_raw(f):
     cols = open(f).readline().lstrip("#").split()
     return dict(zip(cols, np.loadtxt(f, comments="#").T))
 
 
+def panel(ax, h, z, T, alpha, uh, uz, levels, Ts, Tl, lims, with_arrows):
+    """One section: temperature, solidus/liquidus, 50 % liquid, arrows."""
+    tri = mtri.Triangulation(h, z)
+    c = ax.tricontourf(tri, T, levels=levels, cmap="inferno")
+    ax.tricontour(tri, T, levels=[Ts, Tl], colors=["c", "w"], linewidths=0.8)
+    if alpha is not None:
+        ax.tricontour(tri, alpha, levels=[0.5], colors="lime", linewidths=0.6)
+    if with_arrows:
+        (h_lo, h_hi), (z_lo, _) = lims
+        sel = (T > Ts) & (h > h_lo) & (h < h_hi) & (z > z_lo)
+        arrows(ax, h, z, uh, uz, sel, max_len_mm=0.12*(h_hi - h_lo))
+    ax.set_xlim(*lims[0])
+    ax.set_ylim(*lims[1])
+    ax.set_aspect("equal")
+    return c
+
+
+def frame(h, z, mask, margin_h, margin_z, h_rng, z_min, fallback):
+    """Axis limits around the cells in mask, clipped to the section."""
+    if not mask.any():
+        return fallback
+    return ((max(h_rng[0], h[mask].min() - margin_h), min(h_rng[1], h[mask].max() + margin_h)),
+            (max(z_min, z[mask].min() - margin_z), 0.0))
+
+
 def sections(case, out, times):
+    """2 x 2 figure per time: longitudinal cut (y = 0) and cross-section at
+    the beam (mirrored to the full width); left column the whole heated zone
+    (T > 500 K, gradient fading to ambient), right column the melt pool close
+    up (T > solidus) with velocity arrows."""
     Ts, Tl = solidus_liquidus(case)
     x0, x1, v, t_off = scan(case)
     for t in times:
@@ -264,60 +307,42 @@ def sections(case, out, times):
         d = case/"postProcessing"/"sections"/t_name(case, t)
         lon, crs = read_raw(d/"longitudinal.xy"), read_raw(d/"crossSection.xy")
 
-        fig, ax = plt.subplots(2, 1, figsize=(9, 7.5))
-        levels = np.linspace(293, max(Tl + 50, lon["T"].max()), 30)
-        # longitudinal y = 0: x along track, z depth
-        tri = mtri.Triangulation(lon["face_x"]*1e3, lon["face_z"]*1e3)
-        c = ax[0].tricontourf(tri, lon["T"], levels=levels, cmap="inferno")
-        ax[0].tricontour(tri, lon["T"], levels=[Ts, Tl], colors=["c", "w"], linewidths=0.8)
-        if "alpha.solid" in lon:
-            ax[0].tricontour(tri, lon["alpha.solid"], levels=[0.5], colors="lime", linewidths=0.6)
-        sel = lon["T"] > Ts
-        ax[0].quiver(lon["face_x"][sel]*1e3, lon["face_z"][sel]*1e3,
-                     lon["U_x"][sel], lon["U_z"][sel], color="w", scale=3, width=0.002)
-        # frame the heated zone (T > 500 K) plus a margin, so the gradient
-        # is seen fading out to cold material
-        hot = lon["T"] > 500.0
-        if hot.any():
-            x_lo, x_hi = lon["face_x"][hot].min()*1e3 - 1, lon["face_x"][hot].max()*1e3 + 1
-            z_lo = lon["face_z"][hot].min()*1e3 - 0.5
-        else:
-            x_lo, x_hi, z_lo = xb*1e3 - 3, xb*1e3 + 3, -2
-        ax[0].set_xlim(max(lon["face_x"].min()*1e3, x_lo), min(lon["face_x"].max()*1e3, x_hi))
-        ax[0].set_ylim(max(lon["face_z"].min()*1e3, z_lo), 0)
-        ax[0].set_aspect("equal")
-        ax[0].set_xlabel("x [mm]")
-        ax[0].set_ylabel("z [mm]")
-        ax[0].set_title(f"t = {t:g} s, beam at x = {xb*1e3:.1f} mm"
-                        f"{' (laser off)' if t > t_off else ''}: symmetry plane y = 0", fontsize=9)
-        fig.colorbar(c, ax=ax[0], label="T [K]")
-
-        # cross-section at the beam, mirrored to the full width
+        xl, zl = lon["face_x"]*1e3, lon["face_z"]*1e3
         y = np.concatenate([crs["face_y"], -crs["face_y"]])*1e3
-        z = np.concatenate([crs["face_z"], crs["face_z"]])*1e3
-        T = np.concatenate([crs["T"], crs["T"]])
+        zc = np.concatenate([crs["face_z"], crs["face_z"]])*1e3
+        Tc = np.concatenate([crs["T"], crs["T"]])
         Uy = np.concatenate([crs["U_y"], -crs["U_y"]])
         Uz = np.concatenate([crs["U_z"], crs["U_z"]])
-        tri = mtri.Triangulation(y, z)
-        c = ax[1].tricontourf(tri, T, levels=levels, cmap="inferno")
-        ax[1].tricontour(tri, T, levels=[Ts, Tl], colors=["c", "w"], linewidths=0.8)
-        if "alpha.solid" in crs:
-            ax[1].tricontour(tri, np.concatenate([crs["alpha.solid"]]*2), levels=[0.5],
-                             colors="lime", linewidths=0.6)
-        sel = T > Ts
-        ax[1].quiver(y[sel], z[sel], Uy[sel], Uz[sel], color="w", scale=3, width=0.002)
-        hot = T > 500.0
-        y_hi = (np.abs(y[hot]).max() + 1) if hot.any() else 3
-        z_lo = (z[hot].min() - 0.5) if hot.any() else -2
-        ax[1].set_xlim(-min(y_hi, np.abs(y).max()), min(y_hi, np.abs(y).max()))
-        ax[1].set_ylim(max(z.min(), z_lo), 0)
-        ax[1].set_aspect("equal")
-        ax[1].set_xlabel("y [mm] (mirrored about the symmetry plane)")
-        ax[1].set_ylabel("z [mm]")
-        ax[1].set_title(f"cross-section x = {x_cut*1e3:.1f} mm "
-                        "(cyan solidus, white liquidus, green 50% liquid)", fontsize=9)
-        fig.colorbar(c, ax=ax[1], label="T [K]")
-        fig.tight_layout()
+        al = lon.get("alpha.solid")
+        ac = np.concatenate([crs["alpha.solid"]]*2) if "alpha.solid" in crs else None
+        levels = np.linspace(293, max(Tl + 50, lon["T"].max(), Tc.max()), 30)
+        x_rng, y_rng = (xl.min(), xl.max()), (-np.abs(y).max(), np.abs(y).max())
+
+        fallback_l = ((xb*1e3 - 3, xb*1e3 + 3), (-2.0, 0.0))
+        fallback_c = ((-3.0, 3.0), (-2.0, 0.0))
+        lims = {
+            "lon_hot": frame(xl, zl, lon["T"] > 500, 1.0, 0.5, x_rng, zl.min(), fallback_l),
+            "crs_hot": frame(y, zc, Tc > 500, 1.0, 0.5, y_rng, zc.min(), fallback_c),
+            "lon_pool": frame(xl, zl, lon["T"] > Ts, 0.4, 0.25, x_rng, zl.min(), fallback_l),
+            "crs_pool": frame(y, zc, Tc > Ts, 0.4, 0.25, y_rng, zc.min(), fallback_c),
+        }
+        fig, ax = plt.subplots(2, 2, figsize=(14, 7.5),
+                               gridspec_kw={"width_ratios": [1.3, 1]})
+        state = f"t = {t:g} s, beam at x = {xb*1e3:.1f} mm{' (laser off)' if t > t_off else ''}"
+        for row, (h, z, T, a, uh, uz, key, name) in enumerate((
+                (xl, zl, lon["T"], al, lon["U_x"], lon["U_z"], "lon", "symmetry plane y = 0"),
+                (y, zc, Tc, ac, Uy, Uz, "crs", f"cross-section x = {x_cut*1e3:.1f} mm"))):
+            c = panel(ax[row, 0], h, z, T, a, uh, uz, levels, Ts, Tl, lims[key + "_hot"], False)
+            panel(ax[row, 1], h, z, T, a, uh, uz, levels, Ts, Tl, lims[key + "_pool"], True)
+            ax[row, 0].set_title(f"{name}: heated zone", fontsize=9)
+            ax[row, 1].set_title(f"{name}: melt pool and flow", fontsize=9)
+            for col in (0, 1):
+                ax[row, col].set_ylabel("z [mm]")
+                ax[row, col].set_xlabel("x [mm]" if row == 0
+                                        else "y [mm] (mirrored about y = 0)")
+            fig.colorbar(c, ax=ax[row, :].tolist(), label="T [K]", shrink=0.9)
+        fig.suptitle(f"{state}   (cyan solidus, white liquidus, green 50 % liquid)",
+                     fontsize=10)
         fig.savefig(out/f"sections_{t:g}s.png", dpi=150)
         plt.close(fig)
 

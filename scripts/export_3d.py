@@ -120,7 +120,7 @@ def render(full, png, t, xb, laser_on, T_sol, T_liq):
     p.add_mesh(block, scalars="T", cmap="inferno", clim=(293, T_hi),
                ambient=0.35, diffuse=0.7,
                scalar_bar_args={"title": "Temperature [K]", "vertical": True,
-                                "position_x": 0.9, "position_y": 0.25,
+                                "position_x": 0.86, "position_y": 0.25,
                                 "width": 0.05, "height": 0.5, "fmt": "%.0f",
                                 "title_font_size": 14, "label_font_size": 12})
     if pool.n_points:
@@ -138,7 +138,7 @@ def render(full, png, t, xb, laser_on, T_sol, T_liq):
                f"{'' if laser_on else ' (laser off)'}\n"
                "full width (mirrored at y = 0), front quadrant cut away",
                font_size=11)
-    p.camera_position = [(centre[0] + 0.55*size, -1.3*size, 0.75*size), centre, (0, 0, 1)]
+    p.camera_position = [(centre[0] + 0.9*size, -2.1*size, 1.2*size), centre, (0, 0, 1)]
     p.show_axes()
     p.screenshot(png)
     p.close()
