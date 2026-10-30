@@ -31,7 +31,7 @@ matters.
 |---|---|---|
 | Pool depth | 0.37–0.60 mm | 2.3–2.4× deeper |
 | Pool width | 2.6–5.1 mm (width/depth 6.6–8.8) | 23–27 % narrower (width/depth ≈ 2.7) |
-| Peak temperature | 2810–3130 K (below boiling, 3533 K) | 4940–5590 K (unphysical: no evaporation in the model) |
+| Peak temperature (quasi-steady) | 2810–3130 K (below boiling, 3533 K) | 4940–5590 K (unphysical: no evaporation in the model) |
 | Peak melt speed | 0.41–0.53 m/s | ≈ 0.02 m/s (buoyancy only) |
 | Marangoni / buoyancy, Ma/Gr | 365–1384 | — |
 | Péclet number | 58–146 (convection dominates) | 2–5 |
