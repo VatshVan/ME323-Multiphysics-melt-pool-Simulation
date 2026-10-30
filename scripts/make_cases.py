@@ -307,7 +307,7 @@ def control_dict(cfg, end_time):
     body = f"""
 application     additiveFoam;
 
-startFrom       startTime;
+startFrom       latestTime;     // lets Allrun resume after an interruption
 startTime       0;
 stopAt          endTime;
 endTime         {end_time:.6g};

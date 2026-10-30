@@ -7,18 +7,27 @@ cd ${0%/*} || exit 1    # Run from this directory
 application=$(getApplication)
 
 #------------------------------------------------------------------------------
-# Mesh
-runApplication blockMesh
-runApplication checkMesh
+# Resume: if a decomposed run exists, continue it from its latest write time
+# (controlDict has startFrom latestTime), e.g. after the PC restarted.
+if [ -d processor0 ]
+then
+    echo "Resuming $application from the latest time in processor*/"
+    mv log.$application log.$application.$(date +%Y%m%d-%H%M%S) 2>/dev/null
+else
+    # Mesh
+    runApplication blockMesh
+    runApplication checkMesh
+
+    runApplication decomposePar
+fi
 
 #------------------------------------------------------------------------------
 # AdditiveFOAM
-runApplication decomposePar
 runParallel $application
 
 #------------------------------------------------------------------------------
 # Reconstruction
-runApplication reconstructPar
+runApplication -overwrite reconstructPar
 reconstructSolidificationData
 
 touch case.foam    # open this file in ParaView
