@@ -82,7 +82,7 @@
   },
   "runs": {
     "status": "CHOSEN",
-    "note": "Paper-like settings (user): small beam, moderate power, pools ~1-5 mm wide that stay small relative to the block (cf. Pariona Fig. 1, Gao Fig. 7). speed m/s, laser_power W, radius m (1/e^2). Absorbed power/radius <= 900 W/mm keeps T_max below ~3000 K. Earlier high-power runs are archived (results/archive_overheated). Rows *_noMa repeat R02/R06/R11 with dSigmadT = 0 (no Marangoni flow; buoyancy only) to measure the Marangoni effect directly.",
+    "note": "Paper-like settings (user): small beam, moderate power, pools ~1-5 mm wide that stay small relative to the block (cf. Pariona Fig. 1, Gao Fig. 7). speed m/s, laser_power W, radius m (1/e^2). Absorbed power/radius <= 900 W/mm keeps T_max below ~3000 K. Earlier high-power runs are archived (results/archive_overheated). Rows *_noMa repeat R02/R06/R11 with dSigmadT = 0 (no Marangoni flow; buoyancy only) to measure the Marangoni effect directly. Validation set V*: TA's experiment, 3 mm spot (r = 1.5 mm), laser power 1000/1400 W, 6/9/12 mm/s, each with and without Marangoni (dSigmadT = 0); absorptivity 0.35 (cited reference value) until the experiment gives one.",
     "value": [
       {
         "name": "R01",
@@ -190,6 +190,96 @@
         "laser_power": 1857.14,
         "absorptivity": 0.35,
         "radius": 0.00075,
+        "dSigmadT": 0.0
+      },
+      {
+        "name": "V1000_v6",
+        "speed": 0.006,
+        "laser_power": 1000.0,
+        "absorptivity": 0.35,
+        "radius": 0.0015
+      },
+      {
+        "name": "V1000_v6_noMa",
+        "speed": 0.006,
+        "laser_power": 1000.0,
+        "absorptivity": 0.35,
+        "radius": 0.0015,
+        "dSigmadT": 0.0
+      },
+      {
+        "name": "V1000_v9",
+        "speed": 0.009,
+        "laser_power": 1000.0,
+        "absorptivity": 0.35,
+        "radius": 0.0015
+      },
+      {
+        "name": "V1000_v9_noMa",
+        "speed": 0.009,
+        "laser_power": 1000.0,
+        "absorptivity": 0.35,
+        "radius": 0.0015,
+        "dSigmadT": 0.0
+      },
+      {
+        "name": "V1000_v12",
+        "speed": 0.012,
+        "laser_power": 1000.0,
+        "absorptivity": 0.35,
+        "radius": 0.0015
+      },
+      {
+        "name": "V1000_v12_noMa",
+        "speed": 0.012,
+        "laser_power": 1000.0,
+        "absorptivity": 0.35,
+        "radius": 0.0015,
+        "dSigmadT": 0.0
+      },
+      {
+        "name": "V1400_v6",
+        "speed": 0.006,
+        "laser_power": 1400.0,
+        "absorptivity": 0.35,
+        "radius": 0.0015
+      },
+      {
+        "name": "V1400_v6_noMa",
+        "speed": 0.006,
+        "laser_power": 1400.0,
+        "absorptivity": 0.35,
+        "radius": 0.0015,
+        "dSigmadT": 0.0
+      },
+      {
+        "name": "V1400_v9",
+        "speed": 0.009,
+        "laser_power": 1400.0,
+        "absorptivity": 0.35,
+        "radius": 0.0015
+      },
+      {
+        "name": "V1400_v9_noMa",
+        "speed": 0.009,
+        "laser_power": 1400.0,
+        "absorptivity": 0.35,
+        "radius": 0.0015,
+        "dSigmadT": 0.0
+      },
+      {
+        "name": "V1400_v12",
+        "speed": 0.012,
+        "laser_power": 1400.0,
+        "absorptivity": 0.35,
+        "radius": 0.0015
+      },
+      {
+        "name": "V1400_v12_noMa",
+        "speed": 0.012,
+        "laser_power": 1400.0,
+        "absorptivity": 0.35,
+        "radius": 0.0015,
         "dSigmadT": 0.0
       }
     ]
