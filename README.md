@@ -224,6 +224,7 @@ has a `value`, a `status` (CONFIRMED, CHOSEN, SOURCED or DERIVED) and usually a
 | `absorptivity` | Fraction of the power absorbed by the metal | – | Absorbed power = `laser_power` × `absorptivity` |
 | `radius` | Beam radius at 1/e² intensity (D4σ / 2) | m | **Half the spot diameter**: a 3 mm spot is `0.0015` |
 | `dSigmadT` | *(optional)* Surface-tension coefficient for this run only | N/(m·K) | `0.0` switches the Marangoni force off. If omitted, the material value (−2.6e-4) is used |
+| `cell_size` | *(optional)* Fine-region cell size for this run only | m | For grid studies, e.g. `5e-05` for 50 µm. If omitted, `mesh.cell_size` (100 µm) is used. 50 µm gives 1.57 M cells and runs about 10× longer |
 
 Do not halve the power for the half model. The solver gives the half domain
 exactly half of the beam automatically.
