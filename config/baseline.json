@@ -82,7 +82,7 @@
   },
   "runs": {
     "status": "CHOSEN",
-    "note": "Paper-like settings (user): small beam, moderate power, pools ~1-5 mm wide that stay small relative to the block (cf. Pariona Fig. 1, Gao Fig. 7). speed m/s, laser_power W, radius m (1/e^2). Absorbed power/radius <= 900 W/mm keeps T_max below ~3000 K. Earlier high-power runs are archived (results/archive_overheated).",
+    "note": "Paper-like settings (user): small beam, moderate power, pools ~1-5 mm wide that stay small relative to the block (cf. Pariona Fig. 1, Gao Fig. 7). speed m/s, laser_power W, radius m (1/e^2). Absorbed power/radius <= 900 W/mm keeps T_max below ~3000 K. Earlier high-power runs are archived (results/archive_overheated). Rows *_noMa repeat R02/R06/R11 with dSigmadT = 0 (no Marangoni flow; buoyancy only) to measure the Marangoni effect directly.",
     "value": [
       {
         "name": "R01",
@@ -167,6 +167,30 @@
         "laser_power": 2000.0,
         "absorptivity": 0.4,
         "radius": 0.0009000000000000001
+      },
+      {
+        "name": "R02_noMa",
+        "speed": 0.004,
+        "laser_power": 1428.57,
+        "absorptivity": 0.35,
+        "radius": 0.00075,
+        "dSigmadT": 0.0
+      },
+      {
+        "name": "R06_noMa",
+        "speed": 0.006,
+        "laser_power": 2285.71,
+        "absorptivity": 0.35,
+        "radius": 0.001,
+        "dSigmadT": 0.0
+      },
+      {
+        "name": "R11_noMa",
+        "speed": 0.01,
+        "laser_power": 1857.14,
+        "absorptivity": 0.35,
+        "radius": 0.00075,
+        "dSigmadT": 0.0
       }
     ]
   },

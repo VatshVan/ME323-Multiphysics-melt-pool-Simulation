@@ -179,6 +179,14 @@ flow and the cooling/solidification after the laser stops.
 | R11 | 10 | 1857 | 0.35 | 650 | 0.75 |
 | R12 | 10 | 2000 | 0.40 | 800 | 0.90 |
 
+**Marangoni comparison.** `R02_noMa`, `R06_noMa` and `R11_noMa` repeat
+R02, R06 and R11 with dσ/dT = 0, i.e. without the Marangoni force (buoyancy
+still on). Comparing each pair isolates the effect of Marangoni flow on pool
+shape, peak temperature and cooling. Every run also records the Marangoni
+shear stress, surface temperature gradient, surface flow speed and direction,
+and Farzadi's dimensionless numbers (Ma, Gr, Ma/Gr, Pe, Re), in the
+`marangoni`, `timeseries` and `runs` sheets of the workbook.
+
 In this model only laser power × absorptivity enters, so absorptivity is a
 dataset column but not an independent physical input. A first set of
 high-power runs (2–3.5 kW absorbed, aimed at a ≥ 2.5 mm deep pool) heated
