@@ -24,3 +24,4 @@ setup/*.log
 # Per-step time series are large (every solver step); the workbook keeps them
 # resampled. Regenerate with scripts/analyze_case.py.
 results/*/timeseries.csv
+run_all.log
