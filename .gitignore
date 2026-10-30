@@ -28,3 +28,4 @@ run_all.log
 
 # Mirrored full-block VTK snapshots (scripts/export_3d.py), ~12 MB each
 VTK_full/
+run_validation.log
