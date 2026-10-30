@@ -3,6 +3,8 @@
 plane y = 0 and write them for ParaView, plus a rendered 3D image.
 
 For every selected write time of a reconstructed case:
+    results/<case>/marangoni_snapshots.csv  surface Marangoni quantities per
+                                           snapshot (marangoni_metrics)
     cases/<case>/VTK_full/<case>_<t>.vtu    full block (both halves), cell data
                                            T, U, alpha.solid, liquid_fraction
     results/<case>/3d_<t>s.png              cut-away view: temperature on the
@@ -85,6 +87,59 @@ def mirror(half):
     return full
 
 
+def material(case):
+    """dSigmadT [N/m K] and mu [Pa s] as the solver reads them."""
+    import re
+    text = (case/"constant"/"transportProperties").read_text()
+
+    def num(key):
+        return float(re.search(rf"^{key}\s+(?:\[[^\]]*\]\s+)?([0-9.eE+-]+);", text, re.M).group(1))
+    return num("dSigmadT"), num("mu")
+
+
+def marangoni_metrics(half, dSigmadT, mu):
+    """Marangoni quantities on the molten top surface of the half model:
+    surface temperature gradient |grad_s T|, the thermocapillary shear the
+    solver applies tau = |dSigma/dT| fL |grad_s T| (Farzadi 2008 Eq. 6;
+    marangoni BC with our liquid-fraction patch), surface speed, and the
+    flow direction relative to the hottest surface point (+1 all outward,
+    -1 all inward)."""
+    cc = half.cell_centers().points
+    top = np.isclose(cc[:, 2], cc[:, 2].max())
+    fL = 1.0 - half.cell_data["alpha.solid"]
+    grad = half.cell_data_to_point_data().compute_derivative(scalars="T", gradient="gradT")
+    gT = grad.point_data_to_cell_data().cell_data["gradT"]
+    liq = top & (fL > 0.5)
+    out = {"surface_liquid_area_mm2": 0.0, "gradT_surface_max_K_mm": 0.0,
+           "gradT_surface_mean_K_mm": 0.0, "marangoni_stress_max_Pa": 0.0,
+           "marangoni_stress_mean_Pa": 0.0, "U_surface_max_m_s": 0.0,
+           "U_surface_mean_m_s": 0.0, "surface_flow_direction": 0.0,
+           "dSigmadT_N_mK": dSigmadT}
+    if not liq.any():
+        return out
+    gs = np.hypot(gT[liq, 0], gT[liq, 1])
+    tau = abs(dSigmadT)*fL[liq]*gs
+    U = half.cell_data["U"][liq]
+    us = np.hypot(U[:, 0], U[:, 1])
+    hot = cc[top][np.argmax(half.cell_data["T"][top])]
+    r = cc[liq, :2] - hot[:2]
+    rn = np.linalg.norm(r, axis=1)
+    m = (rn > 0) & (us > 1e-6)
+    direction = float(np.mean(np.sum(U[m, :2]*r[m], axis=1)/(rn[m]*us[m]))) if m.any() else 0.0
+    dx = np.cbrt(half.compute_cell_sizes(length=False, area=False).cell_data["Volume"][liq])
+    out.update({
+        "surface_liquid_area_mm2": float(2*np.sum(dx**2)*1e6),   # both halves
+        "gradT_surface_max_K_mm": float(gs.max()*1e-3),
+        "gradT_surface_mean_K_mm": float(gs.mean()*1e-3),
+        "marangoni_stress_max_Pa": float(tau.max()),
+        "marangoni_stress_mean_Pa": float(tau.mean()),
+        "U_surface_max_m_s": float(us.max()),
+        "U_surface_mean_m_s": float(us.mean()),
+        "surface_flow_direction": direction,
+    })
+    return out
+
+
 def render(full, png, t, xb, laser_on, T_sol, T_liq):
     """Cut-away 3D view around the melt pool: the quadrant in front of the
     viewer (y < 0, x > beam) is removed, so the cross-section through the
@@ -159,18 +214,32 @@ def main():
     x0, x1, v = scan(case)
     t_off = (x1 - x0)/v
 
+    dSigmadT, mu = material(case)
+    rows = []
     names = written_times(case)
     if args.times:
         want = {float(t) for t in args.times}
         names = [n for n in names if float(n) in want]
     for tname in names:
         t = float(tname)
-        full = mirror(half_mesh(case, tname))
+        half = half_mesh(case, tname)
+        rows.append({"time_s": t, "laser_on": int(t <= t_off), **marangoni_metrics(half, dSigmadT, mu)})
+        full = mirror(half)
         if not args.no_vtu:
             vtu_dir.mkdir(exist_ok=True)
             full.save(vtu_dir/f"{run_name(case)}_{tname}.vtu")
         render(full, out/f"3d_{t:g}s.png", t, x0 + v*min(t, t_off), t <= t_off, T_sol, T_liq)
         print(f"{tname}: {full.n_cells} cells")
+    if rows:
+        import csv
+        f = out/"marangoni_snapshots.csv"
+        old = list(csv.DictReader(open(f))) if f.exists() else []
+        keep = {float(r["time_s"]): r for r in old}
+        keep.update({r["time_s"]: r for r in rows})
+        with open(f, "w", newline="") as fh:
+            w = csv.DictWriter(fh, fieldnames=list(rows[0]))
+            w.writeheader()
+            w.writerows(keep[k] for k in sorted(keep))
     print(f"images -> {out.relative_to(ROOT)}" + ("" if args.no_vtu else f", VTK -> {vtu_dir}"))
 
 

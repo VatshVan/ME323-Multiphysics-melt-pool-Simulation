@@ -2,7 +2,8 @@
 """Generate the AdditiveFOAM laser-parameter cases from config/baseline.json.
 
 For every row of the run table (config key "runs": name, speed, laser_power,
-absorptivity, radius) this writes cases/<name>/, a complete OpenFOAM case on
+absorptivity, radius, optional dSigmadT, e.g. 0 for a run without Marangoni
+flow) this writes cases/<name>/, a complete OpenFOAM case on
 the fixed mesh.cell_size:
 static files are copied from templates/case/ and the parameter-dependent
 dictionaries are generated here.
@@ -432,6 +433,11 @@ def make_case(cfg, dx, run, cases_dir=ROOT/"cases"):
 
     mesh_text, mesh_info = block_mesh_dict(cfg, dx)
     tp_text, DAS = transport_properties(cfg)
+    if "dSigmadT" in run:      # e.g. 0 for a no-Marangoni comparison run
+        tp_text, n = re.subn(r"^dSigmadT\s+[^;]+;", f"dSigmadT    {run['dSigmadT']:.6g};    // run table",
+                             tp_text, flags=re.M)
+        if n != 1:
+            raise SystemExit("could not set dSigmadT in transportProperties")
 
     write(case/"system"/"blockMeshDict", mesh_text)
     write(case/"system"/"controlDict", control_dict(cfg, end_time))
