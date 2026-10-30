@@ -65,9 +65,9 @@ def main():
     cfg = json.loads((ROOT/"config"/"baseline.json").read_text())
     m = material(cfg)
     las, bc = cfg["laser"], cfg["thermal_bc"]
-    v = las["speed"]["value"]
+    v = min(las["speeds"]["value"])      # slowest speed = largest pool
     T0 = bc["T_initial"]["value"]
-    sizes = cfg["mesh_study"]["cell_sizes"]["value"]
+    sizes = [cfg["mesh"]["cell_size"]["value"]]
     q_cfg = las["power"]["value"]*las["absorptivity"]["value"]
 
     print(f"Material {cfg['material']['file']}: k_s={m['k_s']:.1f} W/mK, cp={m['cp']:.0f} J/kgK, "

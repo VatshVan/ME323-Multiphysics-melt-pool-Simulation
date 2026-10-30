@@ -1,19 +1,22 @@
 #!/usr/bin/env python3
-"""Generate the AdditiveFOAM mesh-refinement cases from config/baseline.json.
+"""Generate the AdditiveFOAM scan-speed cases from config/baseline.json.
 
-For every cell size in mesh_study.cell_sizes this writes cases/mesh_<N>um/,
-a complete OpenFOAM case: static files are copied from templates/case/ and
-the parameter-dependent dictionaries are generated here.
+For every speed in laser.speeds this writes cases/v<speed>mmps/ (e.g.
+cases/v1.5mmps), a complete OpenFOAM case on the fixed mesh.cell_size:
+static files are copied from templates/case/ and the parameter-dependent
+dictionaries are generated here.
 
 Domain (half workpiece, symmetry plane y = 0 on the track centreline):
 
-    x: 0 .. length_x          laser travels in +x along y = 0, z = 0
+    x: 0 .. length_x          laser travels in +x along y = 0, z = 0;
+                              uniform cells for fine_x_start < x < fine_x_end,
+                              graded towards both ends
     y: 0 .. half_width_y      uniform cells for y < roi_y, graded beyond
     z: -depth_z .. 0          uniform cells for z > -roi_z, graded below
 
 Usage:
-    python scripts/make_cases.py            # all cell sizes
-    python scripts/make_cases.py --only 200e-6
+    python scripts/make_cases.py               # all speeds
+    python scripts/make_cases.py --only 1e-3   # one speed [m/s]
 """
 
 import argparse
@@ -105,42 +108,48 @@ def graded_segment(length, d_fine, d_coarse):
 
 
 def block_mesh_dict(cfg, dx):
+    """3 x 2 x 2 blocks: x = coarse | fine | coarse around the laser track,
+    y = fine (ROI) | graded, z = graded | fine (ROI)."""
     g = cfg["geometry"]
     L, W, D = val(g, "length_x"), val(g, "half_width_y"), val(g, "depth_z")
     ry, rz, dout = val(g, "roi_y"), val(g, "roi_z"), val(g, "outer_cell")
+    fx0, fx1 = val(g, "fine_x_start"), val(g, "fine_x_end")
 
-    nx = check_multiple(L, dx, "length_x")
+    nx_fine = check_multiple(fx1 - fx0, dx, "fine_x_end - fine_x_start")
+    nx0, gx0 = graded_segment(fx0, dx, dout)
+    nx1, gx1 = graded_segment(L - fx1, dx, dout)
     ny_roi = check_multiple(ry, dx, "roi_y")
     nz_roi = check_multiple(rz, dx, "roi_z")
     ny_out, gy_out = graded_segment(W - ry, dx, dout)
     nz_out, gz_out = graded_segment(D - rz, dx, dout)
 
-    xs, ys, zs = [0.0, L], [0.0, ry, W], [-D, -rz, 0.0]
+    xs, ys, zs = [0.0, fx0, fx1, L], [0.0, ry, W], [-D, -rz, 0.0]
 
     def vid(i, j, k):
-        return i + 2*(j + 3*k)
+        return i + 4*(j + 3*k)
 
     vertices = [
         f"    ({xs[i]:.6g} {ys[j]:.6g} {zs[k]:.6g})    // {vid(i, j, k)}"
-        for k in range(3) for j in range(3) for i in range(2)
+        for k in range(3) for j in range(3) for i in range(4)
     ]
 
-    # y segment 0 = ROI, 1 = outer; z segment 0 = outer (bottom), 1 = ROI (top)
-    ny = [ny_roi, ny_out]
-    gy = [1.0, gy_out]
-    nz = [nz_out, nz_roi]
-    gz = [1.0/gz_out, 1.0]   # coarse at the bottom, fine towards z = -roi_z
+    # x: 0 coarse->fine, 1 fine, 2 fine->coarse; y: 0 ROI, 1 outer;
+    # z: 0 outer (bottom), 1 ROI (top). Grading = last/first cell size.
+    nx, gx = [nx0, nx_fine, nx1], [1.0/gx0, 1.0, gx1]
+    ny, gy = [ny_roi, ny_out], [1.0, gy_out]
+    nz, gz = [nz_out, nz_roi], [1.0/gz_out, 1.0]
 
     blocks, hexes = [], {}
     for k in range(2):
         for j in range(2):
-            v = [vid(0, j, k), vid(1, j, k), vid(1, j+1, k), vid(0, j+1, k),
-                 vid(0, j, k+1), vid(1, j, k+1), vid(1, j+1, k+1), vid(0, j+1, k+1)]
-            hexes[(j, k)] = v
-            blocks.append(
-                f"    hex ({' '.join(map(str, v))}) ({nx} {ny[j]} {nz[k]}) "
-                f"simpleGrading (1 {gy[j]:.6g} {gz[k]:.6g})"
-            )
+            for i in range(3):
+                v = [vid(i, j, k), vid(i+1, j, k), vid(i+1, j+1, k), vid(i, j+1, k),
+                     vid(i, j, k+1), vid(i+1, j, k+1), vid(i+1, j+1, k+1), vid(i, j+1, k+1)]
+                hexes[(i, j, k)] = v
+                blocks.append(
+                    f"    hex ({' '.join(map(str, v))}) ({nx[i]} {ny[j]} {nz[k]}) "
+                    f"simpleGrading ({gx[i]:.6g} {gy[j]:.6g} {gz[k]:.6g})"
+                )
 
     # Outward-pointing faces of OpenFOAM's hex cell model
     face = {
@@ -151,20 +160,20 @@ def block_mesh_dict(cfg, dx):
 
     def faces(selection):
         out = []
-        for (j, k), side in selection:
-            v = hexes[(j, k)]
-            out.append("            (" + " ".join(str(v[i]) for i in face[side]) + ")")
+        for b, side in selection:
+            v = hexes[b]
+            out.append("            (" + " ".join(str(v[n]) for n in face[side]) + ")")
         return "\n".join(out)
 
-    allBlocks = [(j, k) for k in range(2) for j in range(2)]
+    I, J, K = range(3), range(2), range(2)
     patches = {
-        "top": ("wall", [((j, 1), "zmax") for j in range(2)]),
-        "bottom": ("wall", [((j, 0), "zmin") for j in range(2)]),
-        "symmetry": ("symmetryPlane", [((0, k), "ymin") for k in range(2)]),
+        "top": ("wall", [((i, j, 1), "zmax") for i in I for j in J]),
+        "bottom": ("wall", [((i, j, 0), "zmin") for i in I for j in J]),
+        "symmetry": ("symmetryPlane", [((i, 0, k), "ymin") for i in I for k in K]),
         "sides": ("wall",
-                  [(b, "xmin") for b in allBlocks]
-                + [(b, "xmax") for b in allBlocks]
-                + [((1, k), "ymax") for k in range(2)]),
+                  [((0, j, k), "xmin") for j in J for k in K]
+                + [((2, j, k), "xmax") for j in J for k in K]
+                + [((i, 1, k), "ymax") for i in I for k in K]),
     }
     boundary = "\n".join(
         f"    {name}\n    {{\n        type {ptype};\n        faces\n        (\n"
@@ -172,7 +181,7 @@ def block_mesh_dict(cfg, dx):
         for name, (ptype, sel) in patches.items()
     )
 
-    nCells = nx*(ny_roi + ny_out)*(nz_roi + nz_out)
+    nCells = sum(nx)*(ny_roi + ny_out)*(nz_roi + nz_out)
     body = (
         f"// Generated by scripts/make_cases.py: ROI cell {dx*1e6:g} um, "
         f"~{nCells} cells\n\nconvertToMeters 1;\n\n"
@@ -183,7 +192,8 @@ def block_mesh_dict(cfg, dx):
         "mergePatchPairs\n(\n);"
     )
     info = {"nx": nx, "ny": [ny_roi, ny_out], "nz": [nz_roi, nz_out],
-            "grading_y_outer": gy_out, "grading_z_outer": gz_out, "n_cells": nCells}
+            "grading_x": [gx0, gx1], "grading_y_outer": gy_out,
+            "grading_z_outer": gz_out, "n_cells": nCells}
     return foam_file("dictionary", "system", "blockMeshDict", body), info
 
 
@@ -401,8 +411,14 @@ def write(path, text):
         f.write(text)
 
 
-def make_case(cfg, dx, cases_dir=ROOT/"cases"):
-    case = cases_dir/f"mesh_{round(dx*1e6)}um"
+def case_name(speed):
+    return f"v{speed*1e3:g}mmps"
+
+
+def make_case(cfg, dx, speed, cases_dir=ROOT/"cases"):
+    cfg = json.loads(json.dumps(cfg))
+    cfg["laser"]["speed"] = {"value": speed, "status": "CONFIRMED"}
+    case = cases_dir/case_name(speed)
     if case.exists():
         shutil.rmtree(case)
     shutil.copytree(ROOT/"templates"/"case", case)
@@ -427,7 +443,7 @@ def make_case(cfg, dx, cases_dir=ROOT/"cases"):
         for key, e in entries.items()
         if isinstance(e, dict) and e.get("status") == "PENDING"
     )
-    info = {"cell_size": dx, "end_time": end_time, "DAS": DAS,
+    info = {"cell_size": dx, "scan_speed": speed, "end_time": end_time, "DAS": DAS,
             "mesh": mesh_info, "pending_parameters": pending}
     write(case/"case_info.json", json.dumps(info, indent=2) + "\n")
     return case, info
@@ -437,16 +453,17 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--config", default=ROOT/"config"/"baseline.json", type=Path)
-    parser.add_argument("--only", type=float, help="generate a single cell size [m]")
+    parser.add_argument("--only", type=float, help="generate a single scan speed [m/s]")
     parser.add_argument("--cases-dir", type=Path, default=ROOT/"cases",
                         help="where to write the cases (default: cases/)")
     args = parser.parse_args()
 
     cfg = json.loads(Path(args.config).read_text())
-    sizes = [args.only] if args.only else val(cfg["mesh_study"], "cell_sizes")
+    dx = val(cfg["mesh"], "cell_size")
+    speeds = [args.only] if args.only else val(cfg["laser"], "speeds")
 
-    for dx in sizes:
-        case, info = make_case(cfg, dx, args.cases_dir.resolve())
+    for v in speeds:
+        case, info = make_case(cfg, dx, v, args.cases_dir.resolve())
         m = info["mesh"]
         print(f"{case}: {m['n_cells']} cells "
               f"(nx={m['nx']}, ny={m['ny']}, nz={m['nz']}), "
