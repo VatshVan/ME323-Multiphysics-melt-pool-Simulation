@@ -23,7 +23,7 @@ setup/*.log
 
 # Per-step time series are large (every solver step); the workbook keeps them
 # resampled. Regenerate with scripts/analyze_case.py.
-results/*/timeseries.csv
+results/**/timeseries.csv
 run_all.log
 
 # Mirrored full-block VTK snapshots (scripts/export_3d.py), ~12 MB each
