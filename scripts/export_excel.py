@@ -54,14 +54,18 @@ COLUMNS = {
     "qs_depth_mm": ("Quasi-steady pool depth (liquidus)", "mm"),
     "qs_width_mm": ("Quasi-steady pool full width (liquidus)", "mm"),
     "qs_length_mm": ("Quasi-steady pool length (liquidus)", "mm"),
-    "cooling_rate_median_K_s": ("Median cooling rate at solidification", "K/s"),
-    "G_median_K_mm": ("Median temperature gradient at solidification", "K/mm"),
-    "R_median_mm_s": ("Median solidification rate", "mm/s"),
-    "G_over_R_median_Ks_mm2": ("Median G/R", "K s/mm^2"),
-    "GR_median_K_s": ("Median G*R", "K/s"),
+    "cooling_rate_median_K_s": ("Median cooling rate at solidification along the track (laser on)", "K/s"),
+    "G_median_K_mm": ("Median temperature gradient at solidification along the track", "K/mm"),
+    "R_median_mm_s": ("Median solidification rate along the track", "mm/s"),
+    "G_over_R_median_Ks_mm2": ("Median G/R along the track", "K s/mm^2"),
+    "GR_median_K_s": ("Median G*R along the track", "K/s"),
+    "bottom_cooling_rate_K_s": ("Cooling rate at the pool bottom on the centreline (track)", "K/s"),
+    "bottom_G_K_mm": ("G at the pool bottom on the centreline (track)", "K/mm"),
+    "bottom_R_mm_s": ("R at the pool bottom on the centreline (track)", "mm/s"),
+    "crater_cooling_rate_median_K_s": ("Median cooling rate of the end crater (after laser off)", "K/s"),
+    "crater_R_median_mm_s": ("Median solidification rate of the end crater", "mm/s"),
     "time_s": ("Simulation time", "s"),
     "beam_x_mm": ("Beam centre position along the track", "mm"),
-    "laser_on": ("1 while the laser is on, 0 after", "-"),
     "T_max_K": ("Peak temperature at this time", "K"),
     "U_max_m_s": ("Peak melt velocity at this time", "m/s"),
     "depth_mm": ("Pool depth at the liquidus", "mm"),
@@ -79,6 +83,7 @@ COLUMNS = {
     "R_mm_s": ("Solidification rate (interface speed)", "mm/s"),
     "G_over_R_Ks_mm2": ("G/R (morphology)", "K s/mm^2"),
     "GR_K_s": ("G*R (= cooling rate, scale of microstructure)", "K/s"),
+    "laser_on": ("1 while the laser is on (track / time series), 0 after (end crater / cooling)", "-"),
 }
 
 
@@ -125,6 +130,11 @@ def run_row(s):
         "R_median_mm_s": (get(sol, "R_m_s", "median") or np.nan)*1e3,
         "G_over_R_median_Ks_mm2": (get(sol, "G_over_R_Ks_m2", "median") or np.nan)*1e-6,
         "GR_median_K_s": get(sol, "GR_K_s", "median"),
+        "bottom_cooling_rate_K_s": get(sol, "pool_bottom_centreline", "cooling_rate_K_s"),
+        "bottom_G_K_mm": (get(sol, "pool_bottom_centreline", "G_K_m") or np.nan)*1e-3,
+        "bottom_R_mm_s": (get(sol, "pool_bottom_centreline", "R_m_s") or np.nan)*1e3,
+        "crater_cooling_rate_median_K_s": get(sol, "crater", "cooling_rate_K_s", "median"),
+        "crater_R_median_mm_s": (get(sol, "crater", "R_m_s", "median") or np.nan)*1e3,
     })
     return row
 
@@ -146,7 +156,7 @@ def timeseries(s, out, dt):
     return df
 
 
-def solidification(case_dir):
+def solidification(case_dir, t_off):
     files = sorted(case_dir.glob("solidificationData/solidification-data*.csv")) \
         or sorted(case_dir.glob("solidificationData/data_*.csv"))
     if not files:
@@ -162,6 +172,7 @@ def solidification(case_dir):
         "R_mm_s": R*1e3,
         "G_over_R_Ks_mm2": G/R*1e-6,
         "GR_K_s": G*R,
+        "laser_on": (d["ts"] <= t_off).astype(int),
     })
 
 
@@ -178,7 +189,7 @@ def main():
         runs.append(run_row(s))
         ts = timeseries(s, f.parent, args.dt)
         series.append(pd.concat([pd.DataFrame([inp]*len(ts)), ts], axis=1))
-        sol = solidification(Path(s.get("case_path", ROOT/"cases"/s["case"])))
+        sol = solidification(Path(s.get("case_path", ROOT/"cases"/s["case"])), s["laser_off_s"])
         if sol is not None:
             events.append(pd.concat([pd.DataFrame([inp]*len(sol)), sol], axis=1))
     if not runs:

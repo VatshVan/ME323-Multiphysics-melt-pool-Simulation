@@ -105,17 +105,10 @@ def inputs(case):
     }
 
 
-def solidification(case, x_lo, x_hi):
-    """Statistics of AdditiveFOAM's solidification events (x,y,z,ts,cr,G,v)
-    for x_lo < x < x_hi. Written only when a run ends, so a run that was
-    resumed after an interruption has events from its last segment only."""
-    files = sorted(case.glob("solidificationData/solidification-data*.csv")) \
-        or sorted(case.glob("solidificationData/data_*.csv"))
-    if not files:
-        return None
-    d = np.vstack([np.atleast_2d(np.loadtxt(f, delimiter=",", skiprows=1)) for f in files])
-    d = d[(d[:, 0] > x_lo) & (d[:, 0] < x_hi)]
-    if d.size == 0:
+def event_stats(d):
+    """Median/p10/p90 of cooling rate, G, R, G/R, G*R and the pool bottom on
+    the centreline, for solidification events d (columns x,y,z,ts,cr,gx,gy,gz,v)."""
+    if len(d) == 0:
         return None
     G = np.linalg.norm(d[:, 5:8], axis=1)
     R = d[:, 8]
@@ -142,6 +135,25 @@ def solidification(case, x_lo, x_hi):
             "R_m_s": float(R[bottom].mean()),
         } if bottom.any() else None,
     }
+
+
+def solidification(case, t_off):
+    """AdditiveFOAM's solidification events, split by when they solidified:
+    while the laser was on (the track behind the moving pool; the top-level
+    statistics) and after it switched off (the end crater freezing at once,
+    much faster R and lower G; under "crater"). Events are written only when
+    a run ends, so a run resumed after an interruption keeps the earlier
+    segment only if it was saved (solidification-data_part*.csv)."""
+    files = sorted(case.glob("solidificationData/solidification-data*.csv")) \
+        or sorted(case.glob("solidificationData/data_*.csv"))
+    if not files:
+        return None
+    d = np.vstack([np.atleast_2d(np.loadtxt(f, delimiter=",", skiprows=1)) for f in files])
+    on = d[:, 3] <= t_off
+    track = event_stats(d[on]) or {}
+    track["n_events_total"] = int(len(d))
+    track["crater"] = event_stats(d[~on])
+    return track
 
 
 def run_name(case):
@@ -199,8 +211,7 @@ def history(case, out):
             "pool_width_full_mm": stat(W*1e3, win),
             "pool_depth_mm": stat(D*1e3, win),
         },
-        # events along the part of the track the beam covered
-        "solidification": solidification(case, x0, x0 + v*t_ref),
+        "solidification": solidification(case, t_off),
     }
 
     fig, ax = plt.subplots(3, 1, figsize=(8, 9), sharex=True)
