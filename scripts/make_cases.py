@@ -3,8 +3,8 @@
 
 For every row of the run table (config key "runs": name, speed, laser_power,
 absorptivity, radius, optional dSigmadT, e.g. 0 for a run without Marangoni
-flow) this writes cases/<name>/, a complete OpenFOAM case on
-the fixed mesh.cell_size:
+flow, and optional cell_size for a grid-study run) this writes cases/<name>/,
+a complete OpenFOAM case on mesh.cell_size (or the run's own cell_size):
 static files are copied from templates/case/ and the parameter-dependent
 dictionaries are generated here.
 
@@ -472,7 +472,7 @@ def main():
     runs = [r for r in cfg["runs"]["value"] if not args.only or r["name"] in args.only]
 
     for run in runs:
-        case, info = make_case(cfg, dx, run, args.cases_dir.resolve())
+        case, info = make_case(cfg, run.get("cell_size", dx), run, args.cases_dir.resolve())
         m = info["mesh"]
         print(f"{case}: {m['n_cells']} cells "
               f"(nx={m['nx']}, ny={m['ny']}, nz={m['nz']}), "

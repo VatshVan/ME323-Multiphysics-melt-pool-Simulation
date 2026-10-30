@@ -517,6 +517,8 @@ def main():
     p.add_argument("--no-3d", action="store_true",
                    help="skip the mirrored full-block 3D export (scripts/export_3d.py)")
     p.add_argument("--times", type=float, nargs="*", help="section times (default: all written)")
+    p.add_argument("--no-vtu", action="store_true",
+                   help="3D images only, no full-block .vtu files (saves disk on fine meshes)")
     p.add_argument("--sections-only", action="store_true",
                    help="only redraw the sections, isotherm contours and velocity profiles")
     args = p.parse_args()
@@ -538,6 +540,8 @@ def main():
         sections(case, out, args.times or written_times(case))
     if not (args.no_sections or args.no_3d):
         cmd = [sys.executable, str(ROOT/"scripts"/"export_3d.py"), str(case)]
+        if args.no_vtu:
+            cmd.append("--no-vtu")
         if args.times:
             cmd += ["--times"] + [f"{t:g}" for t in args.times]
         subprocess.run(cmd, check=True)

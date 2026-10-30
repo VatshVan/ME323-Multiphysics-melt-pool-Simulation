@@ -82,7 +82,7 @@
   },
   "runs": {
     "status": "CHOSEN",
-    "note": "Paper-like settings (user): small beam, moderate power, pools ~1-5 mm wide that stay small relative to the block (cf. Pariona Fig. 1, Gao Fig. 7). speed m/s, laser_power W, radius m (1/e^2). Absorbed power/radius <= 900 W/mm keeps T_max below ~3000 K. Earlier high-power runs are archived (results/archive_overheated). Rows *_noMa repeat R02/R06/R11 with dSigmadT = 0 (no Marangoni flow; buoyancy only) to measure the Marangoni effect directly. Validation set V*: TA's experiment, 3 mm spot (r = 1.5 mm), laser power 1000/1400 W, 6/9/12 mm/s, each with and without Marangoni (dSigmadT = 0); absorptivity 0.35 (cited reference value) until the experiment gives one.",
+    "note": "Paper-like settings (user): small beam, moderate power, pools ~1-5 mm wide that stay small relative to the block (cf. Pariona Fig. 1, Gao Fig. 7). speed m/s, laser_power W, radius m (1/e^2). Absorbed power/radius <= 900 W/mm keeps T_max below ~3000 K. Earlier high-power runs are archived (results/archive_overheated). Rows *_noMa repeat R02/R06/R11 with dSigmadT = 0 (no Marangoni flow; buoyancy only) to measure the Marangoni effect directly. Validation set V*: TA's experiment, 3 mm spot (r = 1.5 mm), laser power 1000/1400 W, 6/9/12 mm/s, each with and without Marangoni (dSigmadT = 0); absorptivity 0.35 (cited reference value) until the experiment gives one. Grid study: V1000_v6/v9/v12_50um repeat V1000_v6/v9/v12 with 50 um cells in the fine region (cell_size per run); the 100 um runs are the reference.",
     "value": [
       {
         "name": "R01",
@@ -281,6 +281,30 @@
         "absorptivity": 0.35,
         "radius": 0.0015,
         "dSigmadT": 0.0
+      },
+      {
+        "name": "V1000_v6_50um",
+        "speed": 0.006,
+        "laser_power": 1000.0,
+        "absorptivity": 0.35,
+        "radius": 0.0015,
+        "cell_size": 5e-05
+      },
+      {
+        "name": "V1000_v9_50um",
+        "speed": 0.009,
+        "laser_power": 1000.0,
+        "absorptivity": 0.35,
+        "radius": 0.0015,
+        "cell_size": 5e-05
+      },
+      {
+        "name": "V1000_v12_50um",
+        "speed": 0.012,
+        "laser_power": 1000.0,
+        "absorptivity": 0.35,
+        "radius": 0.0015,
+        "cell_size": 5e-05
       }
     ]
   },
