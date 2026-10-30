@@ -1,293 +1,167 @@
 # Transient Laser Melt-Pool Simulation with Marangoni Flow
 
-## Project Overview
+**ME323 course project.** This is a 3D, transient thermo-fluid simulation of a
+moving Gaussian laser melting the surface of a **Ti-6Al-4V** block. It is built
+on the open-source finite-volume solver
+[AdditiveFOAM](https://github.com/ORNL/AdditiveFOAM) 2.0.0, running on
+OpenFOAM-14.
 
-This project aims to build a transient numerical model of a laser-heated
-workpiece using **AdditiveFOAM/OpenFOAM**, with code development and
-debugging assisted by an AI coding agent such as Codex.
+The model covers the whole thermal cycle of a laser track:
 
-The initial goal is to study the thermal evolution and fluid motion of a
-melt pool as a moving Gaussian laser heat source travels along the
-workpiece. Particular attention will be paid to Marangoni-driven flow
-near the melt-pool surface and to how the predicted results change with
-mesh resolution.
+**solid heating → melting → Marangoni-driven melt flow → solidification**
 
-This README records the **initial project plan** based on the discussion
-notes. Details that are not yet confirmed are explicitly marked as
-pending.
+It includes:
+- heat conduction with temperature-dependent properties;
+- latent heat;
+- buoyancy;
+- surface-tension (Marangoni) shear;
+- convection and radiation to room temperature.
 
-## Repository Layout and Quick Start
+A parametric study varies scan speed, laser power, absorptivity and beam
+radius. Paired runs with the Marangoni effect switched off show how much it
+matters.
+
+📄 **Full report: [docs/REPORT.md](docs/REPORT.md)**
+
+![3D cut-away of a melt pool](results/R02/3d_0.75s.png)
+
+## Key results
+
+| | With Marangoni flow (12 runs) | Without (3 paired runs) |
+|---|---|---|
+| Pool depth | 0.37–0.60 mm | 2.3–2.4× deeper |
+| Pool width | 2.6–5.1 mm (width/depth 6.6–8.8) | 23–27 % narrower (width/depth ≈ 2.7) |
+| Peak temperature | 2810–3130 K (below boiling, 3533 K) | 4940–5590 K (unphysical: no evaporation in the model) |
+| Peak melt speed | 0.41–0.53 m/s | ≈ 0.02 m/s (buoyancy only) |
+| Marangoni / buoyancy, Ma/Gr | 365–1384 | — |
+| Péclet number | 58–146 (convection dominates) | 2–5 |
+| Cooling rate at solidification | 960–4260 K/s, rising with scan speed | — |
+
+**Marangoni flow is the main mechanism in the pool.** For Ti-6Al-4V, dσ/dT is
+negative, so the surface flows outward from under the beam. That flow:
+- spreads the heat sideways;
+- caps the peak temperature;
+- turns a deep hemispherical conduction pool into a wide, shallow one.
+
+![Marangoni on vs off](docs/figures/marangoni_on_off.png)
+
+## Model summary
+
+| Item | Choice |
+|---|---|
+| Domain | 24 × 20 × 8 mm block. Half model (y ≥ 0) with a symmetry plane on the track centreline |
+| Mesh | Fixed 100 µm hexahedral cells in the 12 × 4 × 2 mm fine region, graded to 1 mm outside; 288,750 cells |
+| Laser | Gaussian (1/e² radius r), absorbed power ηP, moving along x from 8 to 12 mm, then off. 1.5 s simulated per run |
+| Phase change | Enthalpy method. Solid fraction from a cosine-smoothed step between solidus 1878 K and liquidus 1928 K |
+| Flow | Incompressible laminar Navier–Stokes, Boussinesq buoyancy, Carman–Kozeny mushy-zone damping (A_mush = 10⁸) |
+| Marangoni | Top-surface shear μ ∂u/∂n = f_L (dσ/dT) ∇ₛT, applied only where molten. dσ/dT = −2.6 × 10⁻⁴ N/m·K |
+| Heat losses | All surfaces: convection h = 25 W/m²K to 293 K. Top and sides also radiate (ε = 0.54) |
+| Material data | Ti-6Al-4V, every value from a cited source: [materials/Ti6Al4V_sources.md](materials/Ti6Al4V_sources.md) |
+
+The equations, boundary conditions, solver changes and verification checks are
+in the [report](docs/REPORT.md). How each item maps onto AdditiveFOAM's source
+code is in [docs/SIMULATION_PLAN.md](docs/SIMULATION_PLAN.md).
+
+## Run matrix
+
+| Run | Speed (mm/s) | Absorbed power (W) | Absorptivity | Beam radius (mm) |
+|---|---|---|---|---|
+| R01 / R02 / R03 | 4 | 300 / 500 / 700 | 0.30 / 0.35 / 0.40 | 0.50 / 0.75 / 1.00 |
+| R04 / R05 / R06 | 6 | 400 / 600 / 800 | 0.40 / 0.30 / 0.35 | 0.50 / 0.75 / 1.00 |
+| R07 / R08 / R09 | 8 | 350 / 550 / 750 | 0.35 / 0.40 / 0.30 | 0.60 / 0.75 / 1.00 |
+| R10 / R11 / R12 | 10 | 450 / 650 / 800 | 0.30 / 0.35 / 0.40 | 0.50 / 0.75 / 0.90 |
+| R02_noMa, R06_noMa, R11_noMa | as R02, R06, R11 | | | |
+
+The `_noMa` runs use **dσ/dT = 0**, so the Marangoni force is off; buoyancy is
+still on. The full table, with laser power and line energy, is in
+[config/baseline.json](config/baseline.json) and the report.
+
+## Data
+
+All 15 runs are collected in **`results/melt_pool_dataset.xlsx`**, laid out as
+machine-learning tables: every row carries the run name and its inputs.
+
+| Sheet | Rows | Content |
+|---|---|---|
+| `runs` | 15 | One row per run: inputs, quasi-steady pool size, temperatures, speeds, solidification statistics, Marangoni quantities, Ma / Gr / Pe / Re |
+| `timeseries` | 2,265 | Every run every 0.01 s |
+| `marangoni` | 90 | Surface Marangoni shear, temperature gradient, surface speed and flow direction, every 0.25 s |
+| `solidification` | 69,811 | Every solidification event: position, time, cooling rate, G, R, G/R |
+| `columns` | 80 | Description and unit of every column |
+
+Each run also has a folder `results/<run>/` holding:
+- `summary.json`;
+- a time-history plot;
+- 2D temperature and velocity sections every 0.25 s;
+- 3D cut-away images;
+- `marangoni_snapshots.csv`.
+
+## Repository layout
 
 ```
-config/baseline.json      all physical/numerical parameters (CONFIRMED / CHOSEN / SOURCED)
-materials/                Ti6Al4V.cfg (+ cited sources), pure-Al reference file
-templates/case/           static OpenFOAM case files (fields, numerics, Allrun)
-scripts/make_cases.py     one case per row of the run table in config/baseline.json (cases/R01 ...)
-scripts/estimate_pool.py  Rosenthal pool size, Marangoni velocity, time-step estimates
-scripts/analyze_case.py   history plots, pool metrics, time series, field sections -> results/<case>/
-scripts/export_excel.py   all runs -> results/melt_pool_dataset.xlsx for the ML model
-scripts/export_3d.py      full-block (mirrored) 3D snapshots: VTK for ParaView + 3D images
-scripts/run_all.sh        run + analyse + export every case, skipping finished ones
-setup/                    install script + per-terminal environment
-external/AdditiveFOAM     solver source (git submodule, v2.0.0, OpenFOAM-14)
-docs/SETUP.md             installation steps
-docs/SIMULATION_PLAN.md   how the physics maps onto AdditiveFOAM, run order, open questions
-papers/                   reference papers
+config/baseline.json       all physical and numerical inputs, each tagged CONFIRMED / CHOSEN / SOURCED / DERIVED
+materials/                 Ti6Al4V.cfg and its cited sources
+templates/case/            static OpenFOAM case files (fields, numerics, resumable Allrun)
+setup/                     install script, per-terminal environment, solver patches
+external/AdditiveFOAM      solver source (git submodule, v2.0.0)
+scripts/
+  make_cases.py            builds cases/<run> from config/baseline.json (mesh, smoothed step, laser path)
+  run_all.sh               runs, analyses and exports every case, skipping finished ones
+  analyze_case.py          pool size, time series, solidification statistics, 2D sections
+  export_3d.py             full-width 3D fields (ParaView .vtu), 3D images, surface Marangoni metrics
+  export_excel.py          results/melt_pool_dataset.xlsx
+  report_figures.py        summary figures for the report (docs/figures/)
+  estimate_pool.py         Rosenthal pool-size and time-step estimates
+docs/
+  REPORT.md                project report
+  SIMULATION_PLAN.md       physics-to-solver mapping, design history
+  SETUP.md                 installation
+papers/                    reference papers (Gao 2021, Farzadi 2008, Pariona 2018, Fuhrich 2001)
+results/                   per-run outputs and the dataset workbook
 ```
+
+## Quick start
+
+On Ubuntu 22.04 or 24.04, after the one-time install in
+[docs/SETUP.md](docs/SETUP.md):
 
 ```bash
-# from the project root, on Ubuntu 22.04/24.04 (see docs/SETUP.md for the one-time install)
-source setup/env.sh
-python scripts/make_cases.py                       # one case per row of the run table
-nohup bash scripts/run_all.sh > run_all.log 2>&1 &   # run, analyse, export all (resumable)
-# results: results/<case>/ (plots, 3D images, summary.json, timeseries.csv)
-#          cases/<case>/VTK_full/*.vtu (full-block 3D fields for ParaView)
-#          results/melt_pool_dataset.xlsx (runs / timeseries / solidification / columns)
+source setup/env.sh                                   # in every new terminal
+python scripts/make_cases.py                          # cases/R01 ... from config/baseline.json
+nohup bash scripts/run_all.sh > run_all.log 2>&1 &    # run + analyse + export (resumable)
+python scripts/report_figures.py                      # report figures
 ```
 
-## Initial Scope
+On 8 cores a run takes 15–33 min with Marangoni flow and 6–8 min without it.
+`run_all.sh` resumes an interrupted run from its last saved time.
 
-The first implementation will focus on:
+## Solver modifications
 
-1.  Transient heat transfer in the workpiece.
-2.  A Gaussian laser heat source moving in the (x)-direction.
-3.  Melting and solidification, including latent heat where supported by
-    the selected model.
-4.  Fluid flow in the molten region.
-5.  Marangoni surface-tension effects.
-6.  Thermal boundary conditions, including convection and radiation as
-    specified for the case.
-7.  A laser-parameter study (scan speed, power, absorptivity, beam radius)
-    on a fixed 100 µm grid. (A 200/150/100 µm mesh study was planned first
-    and replaced by this.)
-8.  Recording time-dependent fields and quantities that describe
-    melt-pool formation, flow, cooling, and solidification.
+AdditiveFOAM's tutorials solve heat conduction only. To run the full melt flow,
+three changes were made:
+- the flow solve is switched on (`nOuterCorrectors 1`);
+- two small patches in [setup/patches/](setup/patches/), applied automatically
+  by the install script:
+  - **`marangoni-assignable`:** stops the pressure step from pushing mass
+    through the closed top surface;
+  - **`marangoni-liquid-fraction`:** scales the Marangoni shear by the liquid
+    fraction, so it acts only on molten surface.
 
-The initial plan is to use a fixed mesh. Moving-mesh/interface
-deformation is outside the first implementation scope unless the TA
-later specifies otherwise.
+## Limitations
 
-## Geometry and Coordinates
+- The top surface is flat and fixed: there is no evaporation, recoil pressure
+  or keyhole. This is fine below the boiling point, as in all Marangoni runs.
+- The grid is fixed at 100 µm, with no mesh-independence study. Pools are 4–6
+  cells deep, so trends between runs are more reliable than absolute values.
+- The track is short (4 mm). Depth and peak temperature reach steady state,
+  but width and length still grow 3–4 %.
 
--   **Material:** Ti-6Al-4V (properties and references:
-    `materials/Ti6Al4V_sources.md`).
--   **Workpiece:** 50 mm long (x, laser travel) × 20 mm wide (y) × 8 mm
-    deep (z, top surface at z = 0).
--   **Symmetry:** half model y ≥ 0 (10 mm), symmetry plane y = 0 on the
-    track centreline.
--   **Fine-grid region (ROI):** 5 mm × 5 mm corner at the symmetry plane and
-    the top surface, along the whole length; graded to 0.6 mm cells outside.
--   **Laser:** Gaussian beam moving along x on the symmetry plane; speed,
-    power, absorptivity and radius vary per run (table below).
--   **Dataset runs** use a 24 mm long block to fit the ~30 min per run
-    budget; the 50 mm block is supported by the same scripts.
+## References
 
-## Physics and Model Components
+- S. Gao et al., *Optics & Laser Technology* 142 (2021) 107215.
+- A. Farzadi et al., *Int. J. Adv. Manuf. Technol.* 38 (2008) 258–267.
+- M. M. Pariona et al., *Int. J. Heat Mass Transfer* 119 (2018) 10–19.
+- T. Fuhrich et al., *J. Laser Appl.* 13 (2001) 178–186.
 
-### 1. Transient heat transfer
-
-Solve the transient thermal problem in the workpiece, including
-conduction and the moving laser heat input. Thermal boundary conditions
-are expected to include convection and radiation where prescribed.
-
-The laser source will be represented as a Gaussian distribution moving
-along (x). Its implementation requires the laser power or absorbed
-power, beam radius/diameter, scan speed, and the chosen Gaussian
-convention.
-
-### 2. Melting and solidification
-
-The model should account for the transition between solid and liquid.
-The implementation should use the phase-change treatment supported by
-the chosen AdditiveFOAM solver, including latent heat and a
-liquid-fraction or equivalent formulation as appropriate.
-
-The notes describe an initial heating period before melting starts,
-followed by melt-pool formation and subsequent cooling/solidification
-after the beam passes. These stages should be captured in transient
-outputs.
-
-### 3. Fluid flow in the melt pool
-
-Use the solver's existing fluid-flow formulation where suitable. The
-model should suppress unrealistic flow through solid or partially solid
-material using the phase-change resistance treatment provided by the
-selected implementation, if applicable.
-
-The flow formulation and its assumptions must be checked against the
-selected solver and the TA's requirements before changes are made.
-
-### 4. Marangoni surface-tension model
-
-The discussion notes propose a temperature-dependent surface tension
-relation of the form
-
-$$
-\sigma = \sigma_0 + \frac{d\sigma}{dT}\,(T - T_{\mathrm{ref}})
-$$
-
-where the reference temperature and coefficients must be defined
-consistently with the chosen model. The notes appear to refer to a
-reference/melting temperature, but the exact symbol should be confirmed.
-
-The corresponding tangential surface stress is driven by the surface
-gradient of surface tension. The implementation should be checked to
-ensure that the temperature dependence and surface-gradient treatment
-match the intended model.
-
-The notes also record two constants, read approximately as:
-
--   (B = 0.0001)
--   A second constant written as "Aroush" or similar, with a value that
-    appears to be (10\^8).
-
-**These readings are provisional, not verified parameter values.**
-Working interpretation (see `docs/SIMULATION_PLAN.md` §2): B and
-A_mush ("Aroush") of the Carman–Kozeny mushy-zone term
-`C(1−fL)²/(fL³+B)` in Farzadi et al. (2008), Eq. 2. In AdditiveFOAM this
-maps to `DAS = sqrt(180 μ / A_mush) ≈ 79 µm` for Ti-6Al-4V. The Marangoni shear is applied only on molten surface (× liquid fraction, Farzadi Eq. 6), and the solid–liquid transition uses a cosine-smoothed step (Gao 2021 Eq. 8 form); see `docs/SIMULATION_PLAN.md` §2.
-Confirm the exact names, units, meanings, and values with the TA before
-using them in a simulation. They may relate to the
-mushy-zone/phase-change formulation rather than directly to the
-Marangoni coefficient.
-
-## Laser-Parameter Study (dataset)
-
-All runs use the same fixed grid (100 µm in the fine region) and model; only
-the laser settings change, in the range of the reference papers (small beam,
-moderate power): pools ~2–5 mm wide and ~0.3–1 mm deep that stay small
-compared with the block, with the temperature falling back to ambient inside
-it (cf. Pariona Fig. 1, Gao Fig. 7).
-
-Template: 24 × 10 (half) × 8 mm block; fine region 4 mm wide × 2 mm deep
-along x = 6 → 18 mm; laser from x = 8 to 12 mm, then off; 1.5 s of simulated
-time per run (~30–35 min on 8 cores), so every run records heating, melting,
-flow and the cooling/solidification after the laser stops.
-
-| Run | Speed (mm/s) | Laser power (W) | Absorptivity | Absorbed (W) | Beam radius (mm) |
-|---|---|---|---|---|---|
-| R01 | 4 | 1000 | 0.30 | 300 | 0.50 |
-| R02 | 4 | 1429 | 0.35 | 500 | 0.75 |
-| R03 | 4 | 1750 | 0.40 | 700 | 1.00 |
-| R04 | 6 | 1000 | 0.40 | 400 | 0.50 |
-| R05 | 6 | 2000 | 0.30 | 600 | 0.75 |
-| R06 | 6 | 2286 | 0.35 | 800 | 1.00 |
-| R07 | 8 | 1000 | 0.35 | 350 | 0.60 |
-| R08 | 8 | 1375 | 0.40 | 550 | 0.75 |
-| R09 | 8 | 2500 | 0.30 | 750 | 1.00 |
-| R10 | 10 | 1500 | 0.30 | 450 | 0.50 |
-| R11 | 10 | 1857 | 0.35 | 650 | 0.75 |
-| R12 | 10 | 2000 | 0.40 | 800 | 0.90 |
-
-**Marangoni comparison.** `R02_noMa`, `R06_noMa` and `R11_noMa` repeat
-R02, R06 and R11 with dσ/dT = 0, i.e. without the Marangoni force (buoyancy
-still on). Comparing each pair isolates the effect of Marangoni flow on pool
-shape, peak temperature and cooling. Every run also records the Marangoni
-shear stress, surface temperature gradient, surface flow speed and direction,
-and Farzadi's dimensionless numbers (Ma, Gr, Ma/Gr, Pe, Re), in the
-`marangoni`, `timeseries` and `runs` sheets of the workbook.
-
-In this model only laser power × absorptivity enters, so absorptivity is a
-dataset column but not an independent physical input. A first set of
-high-power runs (2–3.5 kW absorbed, aimed at a ≥ 2.5 mm deep pool) heated
-almost the whole block and was archived (`results/archive_overheated/`).
-
-## Quantities to Record
-
-The initial plan is to save time-dependent results and compare the
-following:
-
--   Temperature field and maximum temperature.
--   Time at which melting first occurs.
--   Melt-pool dimensions and liquid-fraction distribution.
--   Velocity field, peak velocity, and flow/circulation patterns in the
-    molten region.
--   Evolution of the melt pool while the laser is present.
--   Cooling behind the moving laser source.
--   Cooling rate and solidification behaviour.
--   Differences in these quantities across the laser settings.
-
-The primary emphasis is on physical behaviour and its sensitivity to the
-laser settings. The recorded data are also exported as an Excel workbook for a
-machine-learning model (`scripts/export_excel.py`). Energy-balance reporting and computational-cost
-benchmarking are not primary deliverables in the current scope.
-
-## Implementation Plan
-
-### Phase 1 --- Inspect and establish a baseline
-
-1.  Check the AdditiveFOAM version, OpenFOAM compatibility, build
-    instructions, and available example cases.
-2.  Identify the existing implementations of heat transfer, laser input,
-    phase change, fluid flow, thermal boundary conditions, and Marangoni
-    stress.
-3.  Build and run an unmodified example before changing the code.
-4.  Document which required physics are already implemented and which
-    require configuration or code changes.
-
-### Phase 2 --- Define the case
-
-1.  Finalize the half-workpiece geometry, symmetry plane, (x)-extent,
-    and ROI placement.
-2.  Confirm material properties and initial/boundary temperatures.
-3.  Obtain the laser power, beam size, scan speed, and source
-    convention.
-4.  Confirm the two constants and the exact Marangoni relation with the
-    TA.
-5.  Select the appropriate fixed-mesh phase-change and fluid-flow
-    formulation.
-
-### Phase 3 --- Implement and test incrementally
-
-1.  Configure the geometry, mesh, and boundary conditions.
-2.  Add and verify the moving Gaussian heat source.
-3.  Verify the thermal response before introducing fluid flow.
-4.  Enable and test melting/solidification.
-5.  Enable or adapt the Marangoni model after confirming its equation
-    and parameters.
-6.  Check solver convergence, field behaviour, and conservation
-    properties sufficiently to detect implementation errors.
-
-### Phase 4 --- Run mesh-refinement cases
-
-1.  Create the 200 µm, 150 µm, and 100 µm cases.
-2.  Keep all physical inputs consistent.
-3.  Run the transient simulations and save comparable time snapshots.
-4.  Extract the quantities listed in the measurement section.
-5.  Compare the results and document mesh sensitivity and any numerical
-    limitations.
-
-## Pending Inputs and Decisions
-
-Given by the user: material, block size, symmetry, ROI, beam diameter, scan
-speed, mesh sizes, A_mush and B. Chosen by us and to be confirmed with the
-TA (reasoning in `config/baseline.json` and `docs/SIMULATION_PLAN.md` §8):
-
--   The 12-run table above (ranges: 4–10 mm/s, 300–800 W absorbed,
-    0.30–0.40 absorptivity, 0.5–1 mm beam radius).
--   Fixed grid size of 100 µm and the 24 mm block with 1.5 s per run.
--   Bottom-surface heat transfer (h = 25 W/m²K, no radiation).
--   Which outputs and comparison times the TA expects.
-
-## Tooling and Reproducibility
-
--   **Solver framework:** AdditiveFOAM 2.0.0 (commit `8314d3c`) on
-    OpenFOAM-14 (OpenFOAM Foundation), run natively on Ubuntu 22.04.
--   **Coding assistance:** Codex or another repository-aware AI coding
-    agent.
--   **Case management:** keep the three mesh cases and their
-    dictionaries/configuration files version-controlled.
--   **Results:** save solver logs, configuration files, mesh
-    information, and post-processing scripts alongside results.
--   **Validation:** compare implementation details with the selected
-    solver documentation and the equations/assumptions in the research
-    papers. A successful compilation alone does not validate the
-    physics.
-
-## Status
-
-**Status: initial specification; not yet a validated simulation.**
-
-The geometry interpretation, constants, and laser parameters still
-require confirmation. No claim is made here that the model has been
-implemented, validated, or reproduced from the papers.
+Material data sources are listed in
+[materials/Ti6Al4V_sources.md](materials/Ti6Al4V_sources.md).
