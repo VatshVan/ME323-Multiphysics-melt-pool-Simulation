@@ -301,10 +301,10 @@ def main():
         if mg is not None:
             marang.append(pd.concat([pd.DataFrame([{"case": s["case"], **inp}]*len(mg)), mg], axis=1))
         ts = timeseries(s, f.parent, args.dt)
-        series.append(pd.concat([pd.DataFrame([inp]*len(ts)), ts], axis=1))
+        series.append(pd.concat([pd.DataFrame([{"case": s["case"], **inp}]*len(ts)), ts], axis=1))
         sol = solidification(Path(s.get("case_path", ROOT/"cases"/s["case"])), s["laser_off_s"])
         if sol is not None:
-            events.append(pd.concat([pd.DataFrame([inp]*len(sol)), sol], axis=1))
+            events.append(pd.concat([pd.DataFrame([{"case": s["case"], **inp}]*len(sol)), sol], axis=1))
     if not runs:
         raise SystemExit("no results/*/summary.json; run analyze_case.py on each case first")
 
