@@ -31,3 +31,4 @@ VTK_full/
 run_validation.log
 run_grid_study.log
 run_flat.log
+run_ta_set.log

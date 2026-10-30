@@ -3,8 +3,7 @@
 
 For every row of the run table (config key "runs": name, speed, laser_power,
 absorptivity, radius, optional dSigmadT, e.g. 0 for a run without Marangoni
-flow, optional cell_size for a grid-study run, optional k for the beam
-profile) this writes cases/<name>/,
+flow, and optional cell_size, k, beta, end_time and flow; see make_case) this writes cases/<name>/,
 a complete OpenFOAM case on mesh.cell_size (or the run's own cell_size):
 static files are copied from templates/case/ and the parameter-dependent
 dictionaries are generated here.
@@ -417,7 +416,10 @@ def write(path, text):
 def make_case(cfg, dx, run, cases_dir=ROOT/"cases"):
     """One case from a row of the run table: speed, laser_power, absorptivity
     and radius override the laser section; every run lasts numerics.end_time
-    (the laser stops at x_end if it gets there first)."""
+    or the run's own end_time (the laser stops at x_end if it gets there
+    first). Optional per-run overrides: k (beam profile), dSigmadT and beta
+    (0 switches Marangoni / buoyancy off), flow = false (no momentum or
+    pressure solve: conduction only, for runs with no driving force)."""
     cfg = json.loads(json.dumps(cfg))
     las = cfg["laser"]
     for key in ("speed", "absorptivity", "radius"):
@@ -425,7 +427,7 @@ def make_case(cfg, dx, run, cases_dir=ROOT/"cases"):
     if "k" in run:             # beam profile: 2 Gaussian, ~10 near flat-top
         las["k"] = {"value": run["k"], "status": "CONFIRMED"}
     las["power"] = {"value": run["laser_power"], "status": "CONFIRMED"}
-    end_time = val(cfg["numerics"], "end_time")
+    end_time = run.get("end_time", val(cfg["numerics"], "end_time"))
     track_time = (val(las, "x_end") - val(las, "x_start"))/run["speed"]
     las["cooling_time"] = {"value": max(end_time - track_time, 0.0), "status": "DERIVED"}
 
@@ -441,6 +443,17 @@ def make_case(cfg, dx, run, cases_dir=ROOT/"cases"):
                              tp_text, flags=re.M)
         if n != 1:
             raise SystemExit("could not set dSigmadT in transportProperties")
+    if "beta" in run:          # e.g. 0 to switch buoyancy off
+        tp_text, n = re.subn(r"^beta(\s+\[[^\]]*\]\s+)[^;]+;", rf"beta\g<1>{run['beta']:.6g};    // run table",
+                             tp_text, flags=re.M)
+        if n != 1:
+            raise SystemExit("could not set beta in transportProperties")
+    if not run.get("flow", True):  # no driving force: the melt stays at rest
+        fv = (case/"system"/"fvSolution").read_text()
+        fv, n = re.subn(r"^(\s*nOuterCorrectors\s+)1;", r"\g<1>0;", fv, flags=re.M)
+        if n != 1:
+            raise SystemExit("could not switch the flow solve off in fvSolution")
+        write(case/"system"/"fvSolution", fv)
 
     write(case/"system"/"blockMeshDict", mesh_text)
     write(case/"system"/"controlDict", control_dict(cfg, end_time))
