@@ -974,12 +974,18 @@ as machine-learning tables (as in Wang et al. 2024).
 | `solidification` | 69,811 | Every solidification event in the fine region: position, time, cooling rate, G, R, G/R, G·R, and whether the laser was on |
 | `columns` | 80 | Description and unit of every column |
 
-Each run folder `results/<run>/` also holds:
-- `summary.json`;
-- the time-history plot;
-- 2D sections at every 0.25 s;
-- 3D cut-away images (full width, mirrored);
-- `marangoni_snapshots.csv`.
+Each run folder `results/<run>/` also holds, at every 0.25 s while there is a
+pool:
+- 2D sections of temperature and velocity (heated zone and pool close-up);
+- `contours_<t>s.png`: 10 labelled isotherms with velocity vectors, and
+  velocity-magnitude contours in the melt;
+- `velocity_profiles_<t>s.png`: surface velocity along and across the pool,
+  horizontal velocity against depth, and vertical velocity under the beam;
+- 3D cut-away, 3D isotherm-surface and 3D velocity images (full width,
+  mirrored).
+
+Each folder also holds `summary.json`, the time-history plot and
+`marangoni_snapshots.csv`.
 
 Full-block 3D fields for ParaView are written to `cases/<run>/VTK_full/`.
 The melted track cross-section of each run, used in §8.5, is in

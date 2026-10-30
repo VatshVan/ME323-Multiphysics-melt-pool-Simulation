@@ -11,6 +11,10 @@ For every selected write time of a reconstructed case:
                                            block surfaces and on a cross-section
                                            through the beam, melt-pool surface
                                            (50 % liquid) and the beam position
+    results/<case>/3d_isotherms_<t>s.png    10 nested isotherm surfaces (while
+                                           there is a pool)
+    results/<case>/3d_velocity_<t>s.png     melt pool coloured by speed, with 3D
+                                           velocity arrows (while there is a pool)
 
 The .vtu files are large (~25 MB each) and stay in the case directory.
 Needs OpenFOAM in the environment (source setup/env.sh) and pyvista.
@@ -199,6 +203,86 @@ def render(full, png, t, xb, laser_on, T_sol, T_liq):
     p.close()
 
 
+def pool_view(full, T_sol, margin=1.0e-3):
+    """Region around the melt pool (T > solidus) plus a margin, the front
+    quadrant (y < 0, ahead of the pool centre) removed, and a camera on it."""
+    b = full.bounds
+    cc = full.cell_centers().points
+    hot = cc[full.cell_data["T"] > T_sol]
+    lo_x, hi_x = hot[:, 0].min() - margin, hot[:, 0].max() + margin
+    w = np.abs(hot[:, 1]).max() + margin
+    lo_z = max(b[4], hot[:, 2].min() - margin)
+    roi = full.clip_box((lo_x, hi_x, -w, w, lo_z, b[5]), invert=False)
+    x_cut = 0.5*(hot[:, 0].min() + hot[:, 0].max())
+    size = max(hi_x - lo_x, 2*w)
+    centre = (x_cut, 0.0, 0.5*lo_z)
+    camera = [(centre[0] + 0.9*size, -1.9*size, 1.1*size), centre, (0, 0, 1)]
+    return roi, (x_cut, 1.0, -1.0, 0.0, -1.0, 1.0), camera
+
+
+def render_isotherms(full, png, t, T_sol, n_levels=10):
+    """n_levels nested isotherm surfaces from 500 K to just below the peak
+    temperature, translucent, in the cut-away block around the pool."""
+    roi, cut, camera = pool_view(full, T_sol, margin=2.5e-3)
+    T_hi = float(np.nanmax(full.cell_data["T"]))
+    levels = np.linspace(500.0, T_hi, n_levels + 1)[:-1]
+    pts = roi.cell_data_to_point_data()
+    iso = pts.contour(list(levels), scalars="T").clip_box(cut, invert=True)
+    cc = roi.cell_centers().points
+    keep = ~((cc[:, 1] < 0) & (cc[:, 0] > cut[0]))
+    block = roi.extract_cells(np.flatnonzero(keep)).extract_surface()
+
+    p = pv.Plotter(off_screen=True, window_size=(1400, 900))
+    p.add_mesh(block.extract_feature_edges(), color="grey", line_width=1)
+    p.add_mesh(iso, scalars="T", cmap="inferno", clim=(293, T_hi), opacity=0.5,
+               lighting=False,
+               scalar_bar_args={"title": "Isotherm [K]", "vertical": True, "position_x": 0.86,
+                                "position_y": 0.25, "width": 0.05, "height": 0.5,
+                                "fmt": "%.0f", "n_labels": n_levels + 1})
+    p.add_text(f"t = {t:g} s: {n_levels} isotherms, {levels[0]:.0f}-{levels[-1]:.0f} K "
+               f"({levels[1] - levels[0]:.0f} K apart)\nfull width (mirrored), front quadrant cut away",
+               font_size=11)
+    p.camera_position = camera
+    p.show_axes()
+    p.screenshot(png)
+    p.close()
+
+
+def render_velocity(full, png, t, T_sol, n_arrows=400):
+    """Melt pool (liquid fraction > 0.5) coloured by velocity magnitude, with
+    3D velocity arrows, front quadrant cut away to show the inside."""
+    roi, cut, camera = pool_view(full, T_sol)
+    melt = roi.threshold(0.5, scalars="liquid_fraction")
+    if melt.n_cells == 0:
+        return
+    melt.cell_data["|U|"] = np.linalg.norm(melt.cell_data["U"], axis=1)
+    cc = melt.cell_centers().points
+    melt = melt.extract_cells(np.flatnonzero(~((cc[:, 1] < 0) & (cc[:, 0] > cut[0]))))
+    U_hi = float(melt.cell_data["|U|"].max()) or 1.0
+    pts = melt.cell_centers()
+    pts.point_data["U"] = melt.cell_data["U"]
+    pts.point_data["|U|"] = melt.cell_data["|U|"]
+    step = max(1, pts.n_points//n_arrows)
+    pts = pts.extract_points(np.arange(0, pts.n_points, step), adjacent_cells=False)
+    size = max(np.ptp(np.array(melt.bounds[:2])), np.ptp(np.array(melt.bounds[2:4])))
+    glyphs = pts.glyph(orient="U", scale="|U|", factor=0.08*size/U_hi)
+    skin = roi.extract_surface()
+
+    p = pv.Plotter(off_screen=True, window_size=(1400, 900))
+    p.add_mesh(skin.extract_feature_edges(), color="grey", line_width=1)
+    p.add_mesh(melt, scalars="|U|", cmap="viridis", clim=(0, U_hi), opacity=0.35,
+               show_scalar_bar=False)
+    p.add_mesh(glyphs, scalars="|U|", cmap="viridis", clim=(0, U_hi),
+               scalar_bar_args={"title": "Speed [m/s]", "vertical": True, "position_x": 0.86,
+                                "position_y": 0.25, "width": 0.05, "height": 0.5, "fmt": "%.2f"})
+    p.add_text(f"t = {t:g} s: melt velocity (pool coloured by speed, arrows scaled by speed, "
+               f"max {U_hi:.2f} m/s)\nfull width (mirrored), front quadrant cut away", font_size=11)
+    p.camera_position = camera
+    p.show_axes()
+    p.screenshot(png)
+    p.close()
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("case", type=Path)
@@ -229,6 +313,9 @@ def main():
             vtu_dir.mkdir(exist_ok=True)
             full.save(vtu_dir/f"{run_name(case)}_{tname}.vtu")
         render(full, out/f"3d_{t:g}s.png", t, x0 + v*min(t, t_off), t <= t_off, T_sol, T_liq)
+        if full.cell_data["T"].max() > T_liq:        # only while there is a pool
+            render_isotherms(full, out/f"3d_isotherms_{t:g}s.png", t, T_sol)
+            render_velocity(full, out/f"3d_velocity_{t:g}s.png", t, T_sol)
         print(f"{tname}: {full.n_cells} cells")
     if rows:
         import csv

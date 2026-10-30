@@ -9,14 +9,19 @@ Writes to results/<case name>/:
     sections_<t>.png   longitudinal (y = 0) and cross-section (x = beam)
                     cuts: temperature, solidus/liquidus, liquid fraction 0.5
                     and velocity vectors, mirrored to the full width
+    contours_<t>s.png  pool close-up: 10 labelled isotherms with velocity
+                    vectors, and velocity-magnitude contours in the melt
+    velocity_profiles_<t>s.png  surface velocity along and across the pool,
+                    horizontal velocity vs depth, vertical velocity under the beam
     summary.json    melting onset, quasi-steady averages, solidification time
 
 Needs a reconstructed case (Allrun does this) and OpenFOAM in the
 environment (source setup/env.sh) for the field sections.
 
 Usage:
-    python scripts/analyze_case.py cases/mesh_200um
-    python scripts/analyze_case.py cases/mesh_200um --no-sections
+    python scripts/analyze_case.py cases/R01
+    python scripts/analyze_case.py cases/R01 --no-sections     # history and summary only
+    python scripts/analyze_case.py cases/R01 --sections-only   # only the 2D plots
 """
 
 import argparse
@@ -258,7 +263,7 @@ sections
 """
 
 
-def arrows(ax, x, z, u, w, sel, max_len_mm=0.35, n_max=120):
+def arrows(ax, x, z, u, w, sel, max_len_mm=0.35, n_max=120, color="w"):
     """Velocity arrows in the melt, at most n_max of them, the fastest
     max_len_mm long (in plot units, mm), so they stay inside small pools."""
     idx = np.flatnonzero(sel)
@@ -266,9 +271,9 @@ def arrows(ax, x, z, u, w, sel, max_len_mm=0.35, n_max=120):
         return
     idx = idx[::max(1, idx.size//n_max)]
     vmax = float(np.hypot(u[idx], w[idx]).max()) or 1.0
-    ax.quiver(x[idx], z[idx], u[idx], w[idx], color="w", angles="xy",
+    ax.quiver(x[idx], z[idx], u[idx], w[idx], color=color, angles="xy",
               scale_units="xy", scale=vmax/max_len_mm, width=0.003)
-    ax.text(0.99, 0.02, f"longest arrow = {vmax:.2f} m/s", color="w", fontsize=7,
+    ax.text(0.99, 0.02, f"longest arrow = {vmax:.2f} m/s", color=color, fontsize=7,
             ha="right", va="bottom", transform=ax.transAxes)
 
 
@@ -357,6 +362,130 @@ def sections(case, out, times):
         fig.savefig(out/f"sections_{t:g}s.png", dpi=150)
         plt.close(fig)
 
+        if max(lon["T"].max(), Tc.max()) > Tl:          # only while there is a pool
+            sec = {"lon": (xl, zl, lon["T"], lon["U_x"], lon["U_z"]),
+                   "crs": (y, zc, Tc, Uy, Uz)}
+            contours(sec, Ts, Tl, state, x_cut, out/f"contours_{t:g}s.png")
+            velocity_profiles(sec, Ts, xb*1e3, state, x_cut, out/f"velocity_profiles_{t:g}s.png")
+
+
+def contours(sec, Ts, Tl, state, x_cut, png, n_levels=10):
+    """Melt-pool close-up, symmetry plane (top) and cross-section through the
+    beam (bottom). Left: n_levels labelled isotherms between the coolest
+    point in the window and the peak temperature, solidus and liquidus,
+    velocity vectors. Right: velocity magnitude contours in the melt, vectors."""
+    fig, axs = plt.subplots(2, 2, figsize=(16, 6.5), layout="constrained")
+    U_hi = max(np.hypot(sec[k][3], sec[k][4])[sec[k][2] > Ts].max(initial=0.0) for k in sec) or 1.0
+    u_levels = np.linspace(0.0, U_hi, n_levels + 1)
+    for row, key, name in ((0, "lon", "symmetry plane y = 0"),
+                           (1, "crs", f"cross-section x = {x_cut*1e3:.1f} mm")):
+        h, z, T, uh, uz = sec[key]
+        tri = mtri.Triangulation(h, z)
+        pool = T > Ts
+        span_h = np.ptp(h[pool]) if pool.any() else 2.0
+        lims = frame(h, z, pool, 0.25*span_h, 0.6*np.ptp(z[pool]) if pool.any() else 0.5,
+                     (h.min(), h.max()), z.min(), ((h.min(), h.max()), (-2.0, 0.0)))
+        (h_lo, h_hi), (z_lo, _) = lims
+        win = (h > h_lo) & (h < h_hi) & (z > z_lo)
+        t_levels = np.linspace(T[win].min(), T[win].max(), n_levels + 2)[1:-1]
+        sel = pool & win
+        U = np.hypot(uh, uz)
+
+        ax = axs[row, 0]
+        cf = ax.tricontourf(tri, T, levels=np.linspace(T[win].min(), T[win].max(), 41), cmap="inferno")
+        cl = ax.tricontour(tri, T, levels=t_levels, colors="k", linewidths=0.6)
+        ax.clabel(cl, fmt="%.0f", fontsize=7, inline=True)
+        ax.tricontour(tri, T, levels=[Ts, Tl], colors=["c", "w"], linewidths=1.2)
+        arrows(ax, h, z, uh, uz, sel, max_len_mm=0.06*(h_hi - h_lo), n_max=70)
+        fig.colorbar(cf, ax=ax, label="T [K]", format="%.0f", fraction=0.04)
+        ax.set_title(f"{name}: {n_levels} isotherms ({t_levels[1] - t_levels[0]:.0f} K apart)", fontsize=9)
+
+        ax = axs[row, 1]
+        tri_u = mtri.Triangulation(h, z)
+        tri_u.set_mask(~pool[tri_u.triangles].all(axis=1))       # melt only
+        cf = ax.tricontourf(tri_u, U, levels=u_levels, cmap="viridis")
+        ax.tricontour(tri, T, levels=[Ts], colors="k", linewidths=1.0)
+        arrows(ax, h, z, uh, uz, sel, max_len_mm=0.06*(h_hi - h_lo), n_max=70, color="k")
+        fig.colorbar(cf, ax=ax, label="|U| [m/s]", format="%.3g", fraction=0.04)
+        ax.set_title(f"{name}: melt velocity (black: solidus)", fontsize=9)
+
+        for ax in axs[row]:
+            ax.set_xlim(*lims[0])
+            ax.set_ylim(*lims[1])
+            ax.set_aspect("equal")
+            ax.set_facecolor("#d9d9d9")
+            ax.set_ylabel("z [mm]")
+            ax.set_xlabel("x [mm]" if key == "lon" else "y [mm] (mirrored about y = 0)")
+    fig.suptitle(f"{state}: temperature (cyan solidus, white liquidus) and velocity in the melt pool",
+                 fontsize=10)
+    fig.savefig(png, dpi=150)
+    plt.close(fig)
+
+
+def velocity_profiles(sec, Ts, xb_mm, state, x_cut, png, n=200):
+    """Velocity along lines through the pool, interpolated from the section
+    data: surface velocity along the centreline and across the track,
+    horizontal velocity against depth at 25/50/75 % of the half width, and
+    vertical velocity against depth under the beam. Only molten points."""
+    def sampler(key):
+        h, z, T, uh, uz = sec[key]
+        tri = mtri.Triangulation(h, z)
+        f = {k: mtri.LinearTriInterpolator(tri, v) for k, v in (("T", T), ("uh", uh), ("uz", uz))}
+        return lambda hh, zz: {k: np.ma.filled(g(hh, zz), np.nan) for k, g in f.items()}
+
+    lon, crs = sampler("lon"), sampler("crs")
+    z_top = min(sec["lon"][1].max(), sec["crs"][1].max())     # first cell centre below the surface
+    pool_l = sec["lon"][2] > Ts
+    pool_c = sec["crs"][2] > Ts
+    if not (pool_l.any() and pool_c.any()):
+        return
+    x_lo, x_hi = sec["lon"][0][pool_l].min(), sec["lon"][0][pool_l].max()
+    half_w = np.abs(sec["crs"][0][pool_c]).max()
+    depth = -sec["crs"][1][pool_c].min()
+    fig, axs = plt.subplots(2, 2, figsize=(11, 7.5))
+
+    xs = np.linspace(x_lo - 0.1, x_hi + 0.1, n)
+    s = lon(xs, np.full(n, z_top))
+    m = s["T"] > Ts
+    ax = axs[0, 0]
+    ax.plot(xs[m], s["uh"][m], color="#2a78d6")
+    ax.axhline(0, color="#52514e", linewidth=0.8)
+    ax.axvline(xb_mm, color="#e34948", linestyle="--", linewidth=1)
+    ax.set(xlabel="x [mm] (dashed: beam centre)", ylabel="u_x [m/s]",
+           title="Surface velocity along the centreline (y = 0)")
+
+    ys = np.linspace(-half_w - 0.1, half_w + 0.1, n)
+    s = crs(ys, np.full(n, z_top))
+    m = s["T"] > Ts
+    ax = axs[0, 1]
+    ax.plot(ys[m], s["uh"][m], color="#2a78d6")
+    ax.axhline(0, color="#52514e", linewidth=0.8)
+    ax.set(xlabel="y [mm]", ylabel="u_y [m/s]",
+           title=f"Surface velocity across the pool (x = {x_cut*1e3:.1f} mm)")
+
+    zs = np.linspace(z_top, -depth - 0.05, n)
+    ax = axs[1, 0]
+    for frac, color in ((0.25, "#86b6ef"), (0.5, "#2a78d6"), (0.75, "#0d366b")):
+        s = crs(np.full(n, frac*half_w), zs)
+        m = s["T"] > Ts
+        ax.plot(s["uh"][m], zs[m], color=color, label=f"y = {frac*half_w:.2f} mm ({frac:.0%} of half width)")
+    ax.axvline(0, color="#52514e", linewidth=0.8)
+    ax.set(xlabel="u_y (outward +) [m/s]", ylabel="z [mm]",
+           title="Horizontal velocity against depth")
+    ax.legend(fontsize=8, loc="lower right")
+
+    s = crs(np.zeros(n), zs)
+    m = s["T"] > Ts
+    ax = axs[1, 1]
+    ax.plot(s["uz"][m], zs[m], color="#2a78d6")
+    ax.axvline(0, color="#52514e", linewidth=0.8)
+    ax.set(xlabel="u_z (upward +) [m/s]", ylabel="z [mm]",
+           title=f"Vertical velocity on the centreline (x = {x_cut*1e3:.1f} mm)")
+    fig.suptitle(f"{state}: velocity profiles in the melt pool (T > solidus)", fontsize=10)
+    fig.tight_layout()
+    fig.savefig(png, dpi=150)
+    plt.close(fig)
+
 
 def written_times(case):
     ts = []
@@ -388,11 +517,18 @@ def main():
     p.add_argument("--no-3d", action="store_true",
                    help="skip the mirrored full-block 3D export (scripts/export_3d.py)")
     p.add_argument("--times", type=float, nargs="*", help="section times (default: all written)")
+    p.add_argument("--sections-only", action="store_true",
+                   help="only redraw the sections, isotherm contours and velocity profiles")
     args = p.parse_args()
 
     case = args.case.resolve()
     out = ROOT/"results"/run_name(case)
     out.mkdir(parents=True, exist_ok=True)
+
+    if args.sections_only:
+        sections(case, out, args.times or written_times(case))
+        print(f"wrote {out.relative_to(ROOT)}")
+        return
 
     summary = history(case, out)
     (out/"summary.json").write_text(json.dumps(summary, indent=2) + "\n")
