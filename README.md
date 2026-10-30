@@ -22,10 +22,11 @@ pending.
 config/baseline.json      all physical/numerical parameters (CONFIRMED / CHOSEN / SOURCED)
 materials/                Ti6Al4V.cfg (+ cited sources), pure-Al reference file
 templates/case/           static OpenFOAM case files (fields, numerics, Allrun)
-scripts/make_cases.py     generates one case per scan speed: cases/v1mmps, v1.5mmps, v2mmps
+scripts/make_cases.py     one case per row of the run table in config/baseline.json (cases/R01 ...)
 scripts/estimate_pool.py  Rosenthal pool size, Marangoni velocity, time-step estimates
 scripts/analyze_case.py   history plots, pool metrics, time series, field sections -> results/<case>/
-scripts/collect_dataset.py  all runs -> results/dataset.csv (inputs + outputs, one row per run)
+scripts/export_excel.py   all runs -> results/melt_pool_dataset.xlsx for the ML model
+scripts/run_all.sh        run + analyse + export every case, skipping finished ones
 setup/                    install script + per-terminal environment
 external/AdditiveFOAM     solver source (git submodule, v2.0.0, OpenFOAM-14)
 docs/SETUP.md             installation steps
@@ -36,10 +37,10 @@ papers/                   reference papers
 ```bash
 # from the project root, on Ubuntu 22.04/24.04 (see docs/SETUP.md for the one-time install)
 source setup/env.sh
-python scripts/make_cases.py
-cd cases/v1mmps && ./Allrun && cd ../..        # re-run ./Allrun to resume after an interruption
-python scripts/analyze_case.py cases/v1mmps     # plots + summary.json + timeseries.csv
-python scripts/export_excel.py                  # all runs -> results/melt_pool_dataset.xlsx
+python scripts/make_cases.py                       # one case per row of the run table
+nohup bash scripts/run_all.sh > run_all.log 2>&1 &   # run, analyse, export all (resumable)
+# results: results/<case>/ (plots, summary.json, timeseries.csv)
+#          results/melt_pool_dataset.xlsx (runs / timeseries / solidification / columns)
 ```
 
 ## Initial Scope
