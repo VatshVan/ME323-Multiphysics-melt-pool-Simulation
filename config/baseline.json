@@ -7,9 +7,9 @@
   },
   "geometry": {
     "length_x": {
-      "value": 0.05,
-      "status": "CONFIRMED",
-      "note": "Block length along the laser track."
+      "value": 0.024,
+      "status": "CHOSEN",
+      "note": "Dataset template: same 24 mm block as trial runs A-G so all rows are comparable and each 5 s run takes ~25 min (user budget 30 min). The full 50 mm block costs ~1.5x."
     },
     "half_width_y": {
       "value": 0.01,
@@ -37,38 +37,27 @@
       "note": "Target cell size at the far boundaries outside the ROI (graded)."
     },
     "fine_x_start": {
-      "value": 0.014,
+      "value": 0.001,
       "status": "CHOSEN",
-      "note": "Uniform fine cells from here to fine_x_end; covers the pool around the 23-27 mm track (pool ~16 mm long in test G). Graded to outer_cell towards x=0."
+      "note": "Fine cells over nearly the whole 24 mm block, as in A-G."
     },
     "fine_x_end": {
-      "value": 0.036,
-      "status": "CHOSEN",
-      "note": "Graded to outer_cell towards x=L beyond this."
+      "value": 0.023,
+      "status": "CHOSEN"
     }
   },
   "mesh": {
     "cell_size": {
-      "value": 0.00015,
+      "value": 0.0002,
       "status": "CHOSEN",
-      "note": "Fixed grid (user: no mesh study). 150 um: pool ~3.3 mm deep is ~22 cells deep."
+      "note": "Fixed grid (user: no mesh study; 200 um chosen over 150 um for run time, ~3 h vs ~9 h for all three speeds). Pool ~3.4 mm deep spans ~17 cells."
     }
   },
   "laser": {
-    "power": {
-      "value": 7142.86,
-      "status": "CHOSEN",
-      "note": "2.5 kW absorbed / 0.35. Test G (1 mm/s, r=2.5 mm): steady depth 3.35-3.4 mm after ~3 s, T_max ~2950 K < T_boil 3533 K."
-    },
     "absorptivity": {
       "value": 0.35,
       "status": "SOURCED",
-      "note": "Much et al. 2024 (arXiv:2401.12114) Table 1, after Khairallah et al. 2016."
-    },
-    "radius": {
-      "value": 0.0025,
-      "status": "CHOSEN",
-      "note": "1/e^2 (D4sigma) radius, 5 mm diameter; widened from the user's 3 mm so the surface stays below boiling at 2.5 kW."
+      "note": "Reference value (Much et al. 2024). Each run sets its own absorptivity; in this model only laser_power x absorptivity matters."
     },
     "depth": {
       "value": 5e-05,
@@ -80,30 +69,106 @@
       "status": "CONFIRMED",
       "note": "k=2 makes the superGaussian a plain Gaussian."
     },
-    "speeds": {
-      "value": [
-        0.001,
-        0.0015,
-        0.002
-      ],
-      "status": "CHOSEN",
-      "note": "Scan-speed sweep (user: vary laser speed, fixed grid). One case per speed: cases/v<speed>mmps."
-    },
     "x_start": {
-      "value": 0.023,
+      "value": 0.004,
       "status": "CHOSEN",
-      "note": "4 mm track centred in the 50 mm block; depth levels off within ~3 s at 1 mm/s."
+      "note": "As in A-G."
     },
     "x_end": {
-      "value": 0.027,
+      "value": 0.02,
       "status": "CHOSEN",
-      "note": "Laser off here, before the pool reaches the block's side walls."
-    },
-    "cooling_time": {
-      "value": 3.0,
-      "status": "CHOSEN",
-      "note": "Laser-off time to capture solidification of the (large) final pool."
+      "note": "Reached at 3.2 s at 5 mm/s (then laser off until end_time); not reached by slower runs."
     }
+  },
+  "runs": {
+    "status": "CHOSEN",
+    "note": "Dataset runs (user: vary power, absorptivity, beam radius and speed on a fixed grid). speed m/s, laser_power W, radius m (1/e^2). No two rows share the same speed, absorbed power (laser_power x absorptivity) and radius. Trial runs A-G (docs/SIMULATION_PLAN.md section 7) are extra rows.",
+    "value": [
+      {
+        "name": "R01",
+        "speed": 0.005,
+        "laser_power": 3333.33,
+        "absorptivity": 0.3,
+        "radius": 0.0015
+      },
+      {
+        "name": "R02",
+        "speed": 0.005,
+        "laser_power": 3750.0,
+        "absorptivity": 0.4,
+        "radius": 0.002
+      },
+      {
+        "name": "R03",
+        "speed": 0.005,
+        "laser_power": 5714.29,
+        "absorptivity": 0.35,
+        "radius": 0.002
+      },
+      {
+        "name": "R04",
+        "speed": 0.005,
+        "laser_power": 8571.43,
+        "absorptivity": 0.35,
+        "radius": 0.003
+      },
+      {
+        "name": "R05",
+        "speed": 0.003,
+        "laser_power": 5000.0,
+        "absorptivity": 0.3,
+        "radius": 0.002
+      },
+      {
+        "name": "R06",
+        "speed": 0.003,
+        "laser_power": 6250.0,
+        "absorptivity": 0.4,
+        "radius": 0.0025
+      },
+      {
+        "name": "R07",
+        "speed": 0.003,
+        "laser_power": 7500.0,
+        "absorptivity": 0.4,
+        "radius": 0.003
+      },
+      {
+        "name": "R08",
+        "speed": 0.002,
+        "laser_power": 5714.29,
+        "absorptivity": 0.35,
+        "radius": 0.0025
+      },
+      {
+        "name": "R09",
+        "speed": 0.002,
+        "laser_power": 8333.33,
+        "absorptivity": 0.3,
+        "radius": 0.0025
+      },
+      {
+        "name": "R10",
+        "speed": 0.001,
+        "laser_power": 5000.0,
+        "absorptivity": 0.3,
+        "radius": 0.002
+      },
+      {
+        "name": "R11",
+        "speed": 0.001,
+        "laser_power": 5000.0,
+        "absorptivity": 0.4,
+        "radius": 0.002
+      },
+      {
+        "name": "R12",
+        "speed": 0.0015,
+        "laser_power": 8571.43,
+        "absorptivity": 0.35,
+        "radius": 0.003
+      }
+    ]
   },
   "thermal_bc": {
     "T_initial": {
@@ -183,6 +248,11 @@
       "value": 8,
       "status": "CHOSEN",
       "note": "Machine has 12 logical cores."
+    },
+    "end_time": {
+      "value": 5.0,
+      "status": "CHOSEN",
+      "note": "Every run is 5 s of simulated time (~25 min on 8 cores at 200 um, user budget 30 min)."
     }
   }
 }

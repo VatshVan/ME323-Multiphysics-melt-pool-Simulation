@@ -1,0 +1,58 @@
+{
+  "case": "C_v5_P3500_r3.0_mesh_200um",
+  "case_path": "/home/vatshvan/run/screen/C_v5_P3500_r3.0/mesh_200um",
+  "inputs": {
+    "cell_size_m": 0.0002,
+    "n_cells": 154440,
+    "laser_power_W": 10000.0,
+    "absorptivity": 0.35,
+    "absorbed_power_W": 3500.0,
+    "beam_radius_m": 0.003,
+    "source_depth_m": 5e-05,
+    "scan_speed_m_s": 0.005,
+    "track_start_m": 0.004,
+    "track_end_m": 0.02,
+    "line_energy_J_m": 700000.0,
+    "dSigmadT_N_mK": -0.00026,
+    "mu_Pa_s": 0.0035,
+    "rho_kg_m3": 4428.0,
+    "DAS_m": 7.937253933193772e-05
+  },
+  "solidus_K": 1878.0,
+  "liquidus_K": 1928.0,
+  "laser_off_s": 3.2,
+  "run_end_s": 1.28675092,
+  "laser_on_at_end": true,
+  "first_melting_s": 0.0064264013,
+  "fully_liquid_surface_s": 0.0085197921,
+  "pool_fully_solidified_s": null,
+  "peak_T_K": 3160.6046,
+  "peak_U_m_s": 0.387914003,
+  "quasi_steady_window_s": [
+    0.772050552,
+    1.28675092
+  ],
+  "quasi_steady": {
+    "T_max_K": {
+      "mean": 3058.0077724126986,
+      "std": 4.364195792671589
+    },
+    "U_max_m_s": {
+      "mean": 0.37878471297658733,
+      "std": 0.005749554323132249
+    },
+    "pool_length_mm": {
+      "mean": 14.703737392063493,
+      "std": 0.928149020550453
+    },
+    "pool_width_full_mm": {
+      "mean": 13.014860914047619,
+      "std": 0.3739226455873908
+    },
+    "pool_depth_mm": {
+      "mean": 1.2996822536111112,
+      "std": 0.10894461350484695
+    }
+  },
+  "solidification": null
+}

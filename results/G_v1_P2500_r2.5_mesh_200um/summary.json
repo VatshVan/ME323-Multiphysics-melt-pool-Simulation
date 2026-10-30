@@ -1,0 +1,91 @@
+{
+  "case": "G_v1_P2500_r2.5_mesh_200um",
+  "case_path": "/home/vatshvan/run/screen3/G_v1_P2500_r2.5/mesh_200um",
+  "inputs": {
+    "cell_size_m": 0.0002,
+    "n_cells": 154440,
+    "laser_power_W": 7142.86,
+    "absorptivity": 0.35,
+    "absorbed_power_W": 2500.0009999999997,
+    "beam_radius_m": 0.0025,
+    "source_depth_m": 5e-05,
+    "scan_speed_m_s": 0.001,
+    "track_start_m": 0.004,
+    "track_end_m": 0.02,
+    "line_energy_J_m": 2500000.9999999995,
+    "dSigmadT_N_mK": -0.00026,
+    "mu_Pa_s": 0.0035,
+    "rho_kg_m3": 4428.0,
+    "DAS_m": 7.937253933193772e-05
+  },
+  "solidus_K": 1878.0,
+  "liquidus_K": 1928.0,
+  "laser_off_s": 16.0,
+  "run_end_s": 5.0,
+  "laser_on_at_end": true,
+  "first_melting_s": 0.0063069861,
+  "fully_liquid_surface_s": 0.0084000397,
+  "pool_fully_solidified_s": null,
+  "peak_T_K": 3068.49731,
+  "peak_U_m_s": 0.344018726,
+  "quasi_steady_window_s": [
+    3.0,
+    5.0
+  ],
+  "quasi_steady": {
+    "T_max_K": {
+      "mean": 2954.719509186706,
+      "std": 5.843798142924425
+    },
+    "U_max_m_s": {
+      "mean": 0.32906037269951127,
+      "std": 0.006958155971798508
+    },
+    "pool_length_mm": {
+      "mean": 15.620408851612902,
+      "std": 0.8518607834665209
+    },
+    "pool_width_full_mm": {
+      "mean": 17.313596809266862,
+      "std": 1.5588117961033487
+    },
+    "pool_depth_mm": {
+      "mean": 3.3673920821505376,
+      "std": 0.012392136581741018
+    }
+  },
+  "solidification": {
+    "n_events": 631,
+    "cooling_rate_K_s": {
+      "median": 156.78063,
+      "p10": 10.517801,
+      "p90": 31916.111
+    },
+    "G_K_m": {
+      "median": 316314.3476126842,
+      "p10": 160696.7409003259,
+      "p90": 1208817.8831487133
+    },
+    "R_m_s": {
+      "median": 0.00045667747,
+      "p10": 5.8161666e-05,
+      "p90": 0.030977939
+    },
+    "G_over_R_Ks_m2": {
+      "median": 596406056.9156815,
+      "p10": 31220826.620751925,
+      "p90": 3456242896.616325
+    },
+    "GR_K_s": {
+      "median": 156.78063429816513,
+      "p10": 10.51780161530805,
+      "p90": 31916.111171435197
+    },
+    "pool_bottom_centreline": {
+      "z_m": -0.0013,
+      "cooling_rate_K_s": 15.221821477777777,
+      "G_K_m": 181127.00903620513,
+      "R_m_s": 8.455407755555556e-05
+    }
+  }
+}

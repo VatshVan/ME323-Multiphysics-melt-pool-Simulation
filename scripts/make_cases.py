@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Generate the AdditiveFOAM scan-speed cases from config/baseline.json.
+"""Generate the AdditiveFOAM laser-parameter cases from config/baseline.json.
 
-For every speed in laser.speeds this writes cases/v<speed>mmps/ (e.g.
-cases/v1.5mmps), a complete OpenFOAM case on the fixed mesh.cell_size:
+For every row of the run table (config key "runs": name, speed, laser_power,
+absorptivity, radius) this writes cases/<name>/, a complete OpenFOAM case on
+the fixed mesh.cell_size:
 static files are copied from templates/case/ and the parameter-dependent
 dictionaries are generated here.
 
@@ -15,8 +16,8 @@ Domain (half workpiece, symmetry plane y = 0 on the track centreline):
     z: -depth_z .. 0          uniform cells for z > -roi_z, graded below
 
 Usage:
-    python scripts/make_cases.py               # all speeds
-    python scripts/make_cases.py --only 1e-3   # one speed [m/s]
+    python scripts/make_cases.py                   # every run in the table
+    python scripts/make_cases.py --only R01 R02    # selected runs
 """
 
 import argparse
@@ -411,21 +412,23 @@ def write(path, text):
         f.write(text)
 
 
-def case_name(speed):
-    return f"v{speed*1e3:g}mmps"
-
-
-def make_case(cfg, dx, speed, cases_dir=ROOT/"cases"):
+def make_case(cfg, dx, run, cases_dir=ROOT/"cases"):
+    """One case from a row of the run table: speed, laser_power, absorptivity
+    and radius override the laser section; every run lasts numerics.end_time
+    (the laser stops at x_end if it gets there first)."""
     cfg = json.loads(json.dumps(cfg))
-    cfg["laser"]["speed"] = {"value": speed, "status": "CONFIRMED"}
-    case = cases_dir/case_name(speed)
+    las = cfg["laser"]
+    for key in ("speed", "absorptivity", "radius"):
+        las[key] = {"value": run[key], "status": "CONFIRMED"}
+    las["power"] = {"value": run["laser_power"], "status": "CONFIRMED"}
+    end_time = val(cfg["numerics"], "end_time")
+    track_time = (val(las, "x_end") - val(las, "x_start"))/run["speed"]
+    las["cooling_time"] = {"value": max(end_time - track_time, 0.0), "status": "DERIVED"}
+
+    case = cases_dir/run["name"]
     if case.exists():
         shutil.rmtree(case)
     shutil.copytree(ROOT/"templates"/"case", case)
-
-    las = cfg["laser"]
-    end_time = (val(las, "x_end") - val(las, "x_start"))/val(las, "speed") \
-        + val(las, "cooling_time")
 
     mesh_text, mesh_info = block_mesh_dict(cfg, dx)
     tp_text, DAS = transport_properties(cfg)
@@ -443,7 +446,7 @@ def make_case(cfg, dx, speed, cases_dir=ROOT/"cases"):
         for key, e in entries.items()
         if isinstance(e, dict) and e.get("status") == "PENDING"
     )
-    info = {"cell_size": dx, "scan_speed": speed, "end_time": end_time, "DAS": DAS,
+    info = {"cell_size": dx, "run": run, "end_time": end_time, "DAS": DAS,
             "mesh": mesh_info, "pending_parameters": pending}
     write(case/"case_info.json", json.dumps(info, indent=2) + "\n")
     return case, info
@@ -453,17 +456,17 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--config", default=ROOT/"config"/"baseline.json", type=Path)
-    parser.add_argument("--only", type=float, help="generate a single scan speed [m/s]")
+    parser.add_argument("--only", nargs="+", metavar="NAME", help="only these runs (by name)")
     parser.add_argument("--cases-dir", type=Path, default=ROOT/"cases",
                         help="where to write the cases (default: cases/)")
     args = parser.parse_args()
 
     cfg = json.loads(Path(args.config).read_text())
     dx = val(cfg["mesh"], "cell_size")
-    speeds = [args.only] if args.only else val(cfg["laser"], "speeds")
+    runs = [r for r in cfg["runs"]["value"] if not args.only or r["name"] in args.only]
 
-    for v in speeds:
-        case, info = make_case(cfg, dx, v, args.cases_dir.resolve())
+    for run in runs:
+        case, info = make_case(cfg, dx, run, args.cases_dir.resolve())
         m = info["mesh"]
         print(f"{case}: {m['n_cells']} cells "
               f"(nx={m['nx']}, ny={m['ny']}, nz={m['nz']}), "

@@ -154,10 +154,13 @@ def history(case, out):
     tp, L, W, D = read_pool(case, Tl)
     tps, Ls, Ws, Ds = read_pool(case, Ts)
 
-    # Quasi-steady window: middle of the track, away from start and end
-    win = (tp > 0.4*t_off) & (tp < 0.9*t_off)
-    winT = (tT > 0.4*t_off) & (tT < 0.9*t_off)
-    winU = (tU > 0.4*t_off) & (tU < 0.9*t_off)
+    # Quasi-steady window: last 40% of the time the laser was on (runs may
+    # end before the laser stops, or have been stopped early)
+    t_ref = min(t_off, tT[-1])
+    lo = 0.6*t_ref
+    win = (tp > lo) & (tp <= t_ref)
+    winT = (tT > lo) & (tT <= t_ref)
+    winU = (tU > lo) & (tU <= t_ref)
 
     def stat(a, m):
         return {"mean": float(a[m].mean()), "std": float(a[m].std())} if m.any() else None
@@ -174,15 +177,18 @@ def history(case, out):
     after = tps > t_off
     summary = {
         "case": run_name(case),
+        "case_path": str(case),
         "inputs": inputs(case),
         "solidus_K": Ts, "liquidus_K": Tl,
         "laser_off_s": t_off,
+        "run_end_s": float(tT[-1]),
+        "laser_on_at_end": bool(t_off > tT[-1]),
         "first_melting_s": first(tT, Tmax >= Ts),
         "fully_liquid_surface_s": first(tT, Tmax >= Tl),
         "pool_fully_solidified_s": first(tps[after], Ls[after] <= 0.0),
         "peak_T_K": float(Tmax.max()),
         "peak_U_m_s": float(Umax.max()),
-        "quasi_steady_window_s": [0.4*t_off, 0.9*t_off],
+        "quasi_steady_window_s": [lo, t_ref],
         "quasi_steady": {
             "T_max_K": stat(Tmax, winT),
             "U_max_m_s": stat(Umax, winU),
@@ -190,8 +196,8 @@ def history(case, out):
             "pool_width_full_mm": stat(W*1e3, win),
             "pool_depth_mm": stat(D*1e3, win),
         },
-        # events solidified while the beam crossed the quasi-steady window
-        "solidification": solidification(case, x0 + v*0.4*t_off, x0 + v*0.9*t_off),
+        # events along the part of the track the beam covered
+        "solidification": solidification(case, x0, x0 + v*t_ref),
     }
 
     fig, ax = plt.subplots(3, 1, figsize=(8, 9), sharex=True)
@@ -209,8 +215,9 @@ def history(case, out):
     ax[2].set_xlabel("time [s]")
     ax[2].legend(fontsize=8)
     for a in ax:
-        a.axvline(t_off, c="r", lw=0.8, ls="--")
-        a.axvspan(0.4*t_off, 0.9*t_off, color="0.9", zorder=0)
+        if t_off <= tT[-1]:
+            a.axvline(t_off, c="r", lw=0.8, ls="--")
+        a.axvspan(lo, t_ref, color="0.9", zorder=0)
         a.grid(alpha=0.3)
     ax[0].set_title(f"{run_name(case)}: laser off at {t_off:g} s (red), "
                     "quasi-steady window shaded", fontsize=9)

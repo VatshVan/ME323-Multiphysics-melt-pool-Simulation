@@ -15,7 +15,7 @@ writes results/melt_pool_dataset.xlsx with the sheets:
 Input columns are repeated on every row so each sheet can be used on its own.
 
 Usage:
-    python scripts/export_excel.py              # all analysed cases/v*mmps
+    python scripts/export_excel.py              # every analysed run in results/
     python scripts/export_excel.py --dt 0.005
 """
 
@@ -43,11 +43,13 @@ COLUMNS = {
     "case": ("Case directory name", "-"),
     "first_melting_s": ("Time T_max first reaches the solidus", "s"),
     "fully_liquid_surface_s": ("Time T_max first reaches the liquidus", "s"),
-    "laser_off_s": ("Time the laser switches off", "s"),
+    "laser_off_s": ("Time the laser switches off (may be after run_end_s)", "s"),
+    "run_end_s": ("Last simulated time of the run", "s"),
+    "laser_on_at_end": ("1 if the laser was still on when the run ended", "-"),
     "pool_fully_solidified_s": ("Time the pool (solidus) has fully solidified after laser off", "s"),
     "peak_T_K": ("Highest temperature in the run", "K"),
     "peak_U_m_s": ("Highest melt velocity in the run", "m/s"),
-    "qs_T_max_K": ("Quasi-steady peak temperature (mean over 40-90% of the track)", "K"),
+    "qs_T_max_K": ("Quasi-steady peak temperature (mean over the last 40% of laser-on time)", "K"),
     "qs_U_max_m_s": ("Quasi-steady peak velocity", "m/s"),
     "qs_depth_mm": ("Quasi-steady pool depth (liquidus)", "mm"),
     "qs_width_mm": ("Quasi-steady pool full width (liquidus)", "mm"),
@@ -108,6 +110,8 @@ def run_row(s):
         "first_melting_s": s["first_melting_s"],
         "fully_liquid_surface_s": s["fully_liquid_surface_s"],
         "laser_off_s": s["laser_off_s"],
+        "run_end_s": s.get("run_end_s"),
+        "laser_on_at_end": int(s.get("laser_on_at_end", False)),
         "pool_fully_solidified_s": s["pool_fully_solidified_s"],
         "peak_T_K": s["peak_T_K"],
         "peak_U_m_s": s["peak_U_m_s"],
@@ -168,17 +172,17 @@ def main():
     args = p.parse_args()
 
     runs, series, events = [], [], []
-    for f in sorted((ROOT/"results").glob("v*mmps/summary.json")):
+    for f in sorted((ROOT/"results").glob("*/summary.json")):
         s = json.loads(f.read_text())
         inp = run_inputs(s)
         runs.append(run_row(s))
         ts = timeseries(s, f.parent, args.dt)
         series.append(pd.concat([pd.DataFrame([inp]*len(ts)), ts], axis=1))
-        sol = solidification(ROOT/"cases"/s["case"])
+        sol = solidification(Path(s.get("case_path", ROOT/"cases"/s["case"])))
         if sol is not None:
             events.append(pd.concat([pd.DataFrame([inp]*len(sol)), sol], axis=1))
     if not runs:
-        raise SystemExit("no results/v*mmps/summary.json; run analyze_case.py on each case first")
+        raise SystemExit("no results/*/summary.json; run analyze_case.py on each case first")
 
     sheets = {"runs": pd.DataFrame(runs), "timeseries": pd.concat(series, ignore_index=True)}
     if events:
