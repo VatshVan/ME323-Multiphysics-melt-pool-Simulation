@@ -91,8 +91,18 @@ def render(full, png, t, xb, laser_on, T_sol, T_liq):
     beam and the symmetry plane show the temperature inside the part."""
     pv.OFF_SCREEN = True
     b = full.bounds
-    lo_x, hi_x = max(b[0], xb - 12e-3), min(b[1], xb + 6e-3)
-    roi = full.clip_box((lo_x, hi_x, -7e-3, 7e-3, -5e-3, b[5]), invert=False)
+    # frame the heated zone (T > 500 K) plus a margin
+    cc_all = full.cell_centers().points
+    hot = cc_all[full.cell_data["T"] > 500.0]
+    if len(hot):
+        lo_x, hi_x = max(b[0], hot[:, 0].min() - 1e-3), min(b[1], hot[:, 0].max() + 1e-3)
+        w = min(b[3], np.abs(hot[:, 1]).max() + 1e-3)
+        lo_z = max(b[4], hot[:, 2].min() - 1e-3)
+    else:
+        lo_x, hi_x, w, lo_z = xb - 3e-3, xb + 3e-3, 3e-3, -2e-3
+    roi = full.clip_box((lo_x, hi_x, -w, w, lo_z, b[5]), invert=False)
+    size = max(hi_x - lo_x, 2*w)
+    centre = (0.5*(lo_x + hi_x), 0.0, 0.3*lo_z)
     cc = roi.cell_centers().points
     keep = ~((cc[:, 1] < 0) & (cc[:, 0] > xb))
     block = roi.extract_cells(np.flatnonzero(keep))
@@ -119,15 +129,16 @@ def render(full, png, t, xb, laser_on, T_sol, T_liq):
         p.add_mesh(outlines, color="cyan", line_width=3,
                    label="melt pool edge")
     if laser_on:
-        p.add_mesh(pv.Cone(center=(xb, 0, 2e-3), direction=(0, 0, -1),
-                           height=4e-3, radius=0.5e-3), color="red", label="laser")
+        h = 0.2*size
+        p.add_mesh(pv.Cone(center=(xb, 0, h/2), direction=(0, 0, -1),
+                           height=h, radius=0.12*h), color="red", label="laser")
     if laser_on or outlines.n_points:      # nothing labelled once all is solid
         p.add_legend(bcolor="white", face=None, size=(0.16, 0.07), loc="lower center")
     p.add_text(f"t = {t:g} s, beam at x = {xb*1e3:.1f} mm"
                f"{'' if laser_on else ' (laser off)'}\n"
                "full width (mirrored at y = 0), front quadrant cut away",
                font_size=11)
-    p.camera_position = [(xb + 10e-3, -24e-3, 14e-3), (xb - 3e-3, 0, -1.5e-3), (0, 0, 1)]
+    p.camera_position = [(centre[0] + 0.55*size, -1.3*size, 0.75*size), centre, (0, 0, 1)]
     p.show_axes()
     p.screenshot(png)
     p.close()

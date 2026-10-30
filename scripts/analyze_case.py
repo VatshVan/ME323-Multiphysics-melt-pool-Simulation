@@ -275,9 +275,16 @@ def sections(case, out, times):
         sel = lon["T"] > Ts
         ax[0].quiver(lon["face_x"][sel]*1e3, lon["face_z"][sel]*1e3,
                      lon["U_x"][sel], lon["U_z"][sel], color="w", scale=3, width=0.002)
-        ax[0].set_xlim(max(lon["face_x"].min()*1e3, xb*1e3 - 9),
-                       min(lon["face_x"].max()*1e3, xb*1e3 + 4))
-        ax[0].set_ylim(-3, 0)
+        # frame the heated zone (T > 500 K) plus a margin, so the gradient
+        # is seen fading out to cold material
+        hot = lon["T"] > 500.0
+        if hot.any():
+            x_lo, x_hi = lon["face_x"][hot].min()*1e3 - 1, lon["face_x"][hot].max()*1e3 + 1
+            z_lo = lon["face_z"][hot].min()*1e3 - 0.5
+        else:
+            x_lo, x_hi, z_lo = xb*1e3 - 3, xb*1e3 + 3, -2
+        ax[0].set_xlim(max(lon["face_x"].min()*1e3, x_lo), min(lon["face_x"].max()*1e3, x_hi))
+        ax[0].set_ylim(max(lon["face_z"].min()*1e3, z_lo), 0)
         ax[0].set_aspect("equal")
         ax[0].set_xlabel("x [mm]")
         ax[0].set_ylabel("z [mm]")
@@ -299,8 +306,11 @@ def sections(case, out, times):
                              colors="lime", linewidths=0.6)
         sel = T > Ts
         ax[1].quiver(y[sel], z[sel], Uy[sel], Uz[sel], color="w", scale=3, width=0.002)
-        ax[1].set_xlim(-4.5, 4.5)
-        ax[1].set_ylim(-3, 0)
+        hot = T > 500.0
+        y_hi = (np.abs(y[hot]).max() + 1) if hot.any() else 3
+        z_lo = (z[hot].min() - 0.5) if hot.any() else -2
+        ax[1].set_xlim(-min(y_hi, np.abs(y).max()), min(y_hi, np.abs(y).max()))
+        ax[1].set_ylim(max(z.min(), z_lo), 0)
         ax[1].set_aspect("equal")
         ax[1].set_xlabel("y [mm] (mirrored about the symmetry plane)")
         ax[1].set_ylabel("z [mm]")
