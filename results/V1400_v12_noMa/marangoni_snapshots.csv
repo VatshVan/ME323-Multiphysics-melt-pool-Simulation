@@ -1,0 +1,7 @@
+time_s,laser_on,surface_liquid_area_mm2,gradT_surface_max_K_mm,gradT_surface_mean_K_mm,marangoni_stress_max_Pa,marangoni_stress_mean_Pa,U_surface_max_m_s,U_surface_mean_m_s,surface_flow_direction,dSigmadT_N_mK
+0.25,1,5.960000300345712,1515.2225,963.0898125,0.0,0.0,0.003035657573491335,0.0014140827115625143,0.766806239459166,0.0
+0.5,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+0.75,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+1.0,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+1.25,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+1.5,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
