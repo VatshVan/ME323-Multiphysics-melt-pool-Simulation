@@ -263,17 +263,25 @@ sections
 """
 
 
+NO_FLOW = 1e-6     # m/s; below this the melt is at rest (round-off level)
+
+
 def arrows(ax, x, z, u, w, sel, max_len_mm=0.35, n_max=120, color="w"):
     """Velocity arrows in the melt, at most n_max of them, the fastest
-    max_len_mm long (in plot units, mm), so they stay inside small pools."""
+    max_len_mm long (in plot units, mm), so they stay inside small pools.
+    No arrows if the melt is at rest (all speeds below NO_FLOW)."""
     idx = np.flatnonzero(sel)
     if idx.size == 0:
         return
     idx = idx[::max(1, idx.size//n_max)]
-    vmax = float(np.hypot(u[idx], w[idx]).max()) or 1.0
+    vmax = float(np.hypot(u[idx], w[idx]).max())
+    if vmax < NO_FLOW:
+        ax.text(0.99, 0.02, f"no flow: max |U| = {vmax:.1e} m/s (round-off)", color=color,
+                fontsize=7, ha="right", va="bottom", transform=ax.transAxes)
+        return
     ax.quiver(x[idx], z[idx], u[idx], w[idx], color=color, angles="xy",
               scale_units="xy", scale=vmax/max_len_mm, width=0.003)
-    ax.text(0.99, 0.02, f"longest arrow = {vmax:.2f} m/s", color=color, fontsize=7,
+    ax.text(0.99, 0.02, f"longest arrow = {vmax:.3g} m/s", color=color, fontsize=7,
             ha="right", va="bottom", transform=ax.transAxes)
 
 
@@ -375,7 +383,8 @@ def contours(sec, Ts, Tl, state, x_cut, png, n_levels=10):
     point in the window and the peak temperature, solidus and liquidus,
     velocity vectors. Right: velocity magnitude contours in the melt, vectors."""
     fig, axs = plt.subplots(2, 2, figsize=(16, 6.5), layout="constrained")
-    U_hi = max(np.hypot(sec[k][3], sec[k][4])[sec[k][2] > Ts].max(initial=0.0) for k in sec) or 1.0
+    U_hi = max(np.hypot(sec[k][3], sec[k][4])[sec[k][2] > Ts].max(initial=0.0) for k in sec)
+    U_hi = max(U_hi, NO_FLOW)          # a melt at rest shows as zero, not as scaled noise
     u_levels = np.linspace(0.0, U_hi, n_levels + 1)
     for row, key, name in ((0, "lon", "symmetry plane y = 0"),
                            (1, "crs", f"cross-section x = {x_cut*1e3:.1f} mm")):
@@ -481,6 +490,12 @@ def velocity_profiles(sec, Ts, xb_mm, state, x_cut, png, n=200):
     ax.axvline(0, color="#52514e", linewidth=0.8)
     ax.set(xlabel="u_z (upward +) [m/s]", ylabel="z [mm]",
            title=f"Vertical velocity on the centreline (x = {x_cut*1e3:.1f} mm)")
+    for ax, along_x in ((axs[0, 0], False), (axs[0, 1], False), (axs[1, 0], True), (axs[1, 1], True)):
+        lo, hi = ax.get_xlim() if along_x else ax.get_ylim()
+        if max(abs(lo), abs(hi)) < NO_FLOW:        # melt at rest: show it as a zero line
+            (ax.set_xlim if along_x else ax.set_ylim)(-NO_FLOW, NO_FLOW)
+            ax.text(0.5, 0.9, "no flow (|U| < 1e-6 m/s)", transform=ax.transAxes,
+                    ha="center", fontsize=8, color="#52514e")
     fig.suptitle(f"{state}: velocity profiles in the melt pool (T > solidus)", fontsize=10)
     fig.tight_layout()
     fig.savefig(png, dpi=150)
