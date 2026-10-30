@@ -93,18 +93,14 @@ y = 0      symmetry: symmetryPlane (track centreline)
 y = 10 mm, x = 0, x = L: sides: noSlip, mixedTemperature h_sides + ε
 z = −8 mm  bottom: noSlip, mixedTemperature h_bottom (no radiation)
 
-x: 0 → 1 mm graded;  1 → 23 mm uniform Δ;  23 → 24 mm graded   (L = 24 mm)
-y: 0 → 8 mm uniform Δ, then graded to 0.6 mm at y = 10 mm
-z: 0 → −5 mm uniform Δ, then graded to 0.6 mm at z = −8 mm
-laser: from x = 4 mm towards x = 20 mm along y = 0; every run lasts 5 s
+x: 0 → 6 mm graded 1 mm → Δ;  6 → 18 mm uniform Δ;  18 → 24 mm graded Δ → 1 mm
+y: 0 → 4 mm uniform Δ, then graded to 1 mm at y = 10 mm
+z: 0 → −2 mm uniform Δ, then graded to 1 mm at z = −8 mm
+laser: x = 8 → 12 mm along y = 0, then off; every run lasts 1.5 s
 ```
 
-Δ = 200 µm (fixed); 172 k cells. One case per row of the run table in
+Δ = 100 µm (fixed); 289 k cells. One case per row of the run table in
 `config/baseline.json` (`cases/R01` … `cases/R12`; table in the README).
-The fine region is wider than the 5 × 5 mm first specified because slow,
-high-power runs make pools up to ~17 mm wide (8.5 mm half width). The
-generator also supports the 50 mm block (set `length_x`, `fine_x_*`,
-`x_start`, `x_end`).
 
 ## 4. Outputs, and how they map to the README's list
 
@@ -144,7 +140,7 @@ generator also supports the 50 mm block (set `length_x`, `fine_x_*`,
 
 ## 7. Laser settings and how they were chosen
 
-Target: melt pool at least 2.5 mm deep, peak temperature below T_boil =
+**First design (archived).** Target: melt pool at least 2.5 mm deep, peak temperature below T_boil =
 3533 K (no evaporation in the model), pool inside the 20 mm block. Trial
 runs at 200 µm on a 24 mm block (`~/run/screen*`, not version-controlled):
 
@@ -165,10 +161,18 @@ At 1 mm/s the pool keeps widening, reaching the block's side wall after
 ~5 s, so the track is limited to 4 mm. Test G also confirmed `maxCo` 0.9
 is stable (max Courant 0.90).
 
+These high-power settings heated almost the whole block: 78–93 % of its
+volume ended > 100 K above ambient and the side walls reached 457–2030 K,
+unlike the papers, where a small pool sits in cool material. The ≥ 2.5 mm
+target was dropped and the dataset uses paper-like settings instead
+(small beam 0.5–1 mm, 300–800 W absorbed, 4–10 mm/s; README). Smoke test of
+the hardest of these (R10: 450 W, r = 0.5 mm, 10 mm/s): pool 2.5 mm wide,
+0.37 mm deep, T_max 3150 K < T_boil, peak |U| 0.46 m/s.
+
 ## 8. Remaining choices to confirm with the TA
 
-1. The run-table ranges (1–5 mm/s, 1–3 kW absorbed, η 0.30–0.40,
-   r 1.5–3 mm) and the 24 mm block / 5 s per run.
+1. The run-table ranges (4–10 mm/s, 300–800 W absorbed, η 0.30–0.40,
+   r 0.5–1 mm) and the 24 mm block / 1.5 s per run.
 2. Bottom boundary: h = 25 W/m²K without radiation (Pariona's workbench
    h_d has no value); Gao instead keeps the bottom at room temperature.
 3. Whether AdditiveFOAM's built-in mushy-zone damping is acceptable, or the

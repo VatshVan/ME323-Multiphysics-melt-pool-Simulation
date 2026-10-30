@@ -58,7 +58,7 @@ The first implementation will focus on:
 6.  Thermal boundary conditions, including convection and radiation as
     specified for the case.
 7.  A laser-parameter study (scan speed, power, absorptivity, beam radius)
-    on a fixed 200 µm grid. (A 200/150/100 µm mesh study was planned first
+    on a fixed 100 µm grid. (A 200/150/100 µm mesh study was planned first
     and replaced by this.)
 8.  Recording time-dependent fields and quantities that describe
     melt-pool formation, flow, cooling, and solidification.
@@ -78,11 +78,9 @@ later specifies otherwise.
 -   **Fine-grid region (ROI):** 5 mm × 5 mm corner at the symmetry plane and
     the top surface, along the whole length; graded to 0.6 mm cells outside.
 -   **Laser:** Gaussian beam moving along x on the symmetry plane; speed,
-    power, absorptivity and radius vary per run (table below). The trial runs
-    showed that a ≥ 2.5 mm deep pool needs slow scans (1 mm/s, 2.5 kW
-    absorbed, 2.5 mm radius: 3.4 mm deep; `docs/SIMULATION_PLAN.md` §7).
--   **Dataset runs** use a 24 mm long block (as the trial runs) to fit the
-    ~30 min per run budget; the 50 mm block is supported by the same scripts.
+    power, absorptivity and radius vary per run (table below).
+-   **Dataset runs** use a 24 mm long block to fit the ~30 min per run
+    budget; the 50 mm block is supported by the same scripts.
 
 ## Physics and Model Components
 
@@ -155,30 +153,36 @@ Marangoni coefficient.
 
 ## Laser-Parameter Study (dataset)
 
-All runs use the same fixed grid (200 µm in the fine region) and model; only
-the laser settings change. Template: 24 × 10 (half) × 8 mm block, laser from
-x = 4 mm towards x = 20 mm, 5 s of simulated time per run (~25 min on 8
-cores). At 5 mm/s the laser reaches x = 20 mm at 3.2 s and is then off, so
-those runs also record cooling and solidification.
+All runs use the same fixed grid (100 µm in the fine region) and model; only
+the laser settings change, in the range of the reference papers (small beam,
+moderate power): pools ~2–5 mm wide and ~0.3–1 mm deep that stay small
+compared with the block, with the temperature falling back to ambient inside
+it (cf. Pariona Fig. 1, Gao Fig. 7).
 
-| Run | Speed (mm/s) | Laser power (W) | Absorptivity | Absorbed (kW) | Beam radius (mm) |
+Template: 24 × 10 (half) × 8 mm block; fine region 4 mm wide × 2 mm deep
+along x = 6 → 18 mm; laser from x = 8 to 12 mm, then off; 1.5 s of simulated
+time per run (~30–35 min on 8 cores), so every run records heating, melting,
+flow and the cooling/solidification after the laser stops.
+
+| Run | Speed (mm/s) | Laser power (W) | Absorptivity | Absorbed (W) | Beam radius (mm) |
 |---|---|---|---|---|---|
-| R01 | 5 | 3333 | 0.30 | 1.0 | 1.5 |
-| R02 | 5 | 3750 | 0.40 | 1.5 | 2.0 |
-| R03 | 5 | 5714 | 0.35 | 2.0 | 2.0 |
-| R04 | 5 | 8571 | 0.35 | 3.0 | 3.0 |
-| R05 | 3 | 5000 | 0.30 | 1.5 | 2.0 |
-| R06 | 3 | 6250 | 0.40 | 2.5 | 2.5 |
-| R07 | 3 | 7500 | 0.40 | 3.0 | 3.0 |
-| R08 | 2 | 5714 | 0.35 | 2.0 | 2.5 |
-| R09 | 2 | 8333 | 0.30 | 2.5 | 2.5 |
-| R10 | 1 | 5000 | 0.30 | 1.5 | 2.0 |
-| R11 | 1 | 5000 | 0.40 | 2.0 | 2.0 |
-| R12 | 1.5 | 8571 | 0.35 | 3.0 | 3.0 |
+| R01 | 4 | 1000 | 0.30 | 300 | 0.50 |
+| R02 | 4 | 1429 | 0.35 | 500 | 0.75 |
+| R03 | 4 | 1750 | 0.40 | 700 | 1.00 |
+| R04 | 6 | 1000 | 0.40 | 400 | 0.50 |
+| R05 | 6 | 2000 | 0.30 | 600 | 0.75 |
+| R06 | 6 | 2286 | 0.35 | 800 | 1.00 |
+| R07 | 8 | 1000 | 0.35 | 350 | 0.60 |
+| R08 | 8 | 1375 | 0.40 | 550 | 0.75 |
+| R09 | 8 | 2500 | 0.30 | 750 | 1.00 |
+| R10 | 10 | 1500 | 0.30 | 450 | 0.50 |
+| R11 | 10 | 1857 | 0.35 | 650 | 0.75 |
+| R12 | 10 | 2000 | 0.40 | 800 | 0.90 |
 
 In this model only laser power × absorptivity enters, so absorptivity is a
-dataset column but not an independent physical input. The seven trial runs
-A–G (`docs/SIMULATION_PLAN.md` §7) are extra rows of the same dataset.
+dataset column but not an independent physical input. A first set of
+high-power runs (2–3.5 kW absorbed, aimed at a ≥ 2.5 mm deep pool) heated
+almost the whole block and was archived (`results/archive_overheated/`).
 
 ## Quantities to Record
 
@@ -251,9 +255,9 @@ Given by the user: material, block size, symmetry, ROI, beam diameter, scan
 speed, mesh sizes, A_mush and B. Chosen by us and to be confirmed with the
 TA (reasoning in `config/baseline.json` and `docs/SIMULATION_PLAN.md` §8):
 
--   The 12-run table above (ranges: 1–5 mm/s, 1–3 kW absorbed, 0.30–0.40
-    absorptivity, 1.5–3 mm beam radius).
--   Fixed grid size of 200 µm and the 24 mm block with 5 s per run.
+-   The 12-run table above (ranges: 4–10 mm/s, 300–800 W absorbed,
+    0.30–0.40 absorptivity, 0.5–1 mm beam radius).
+-   Fixed grid size of 100 µm and the 24 mm block with 1.5 s per run.
 -   Bottom-surface heat transfer (h = 25 W/m²K, no radiation).
 -   Which outputs and comparison times the TA expects.
 
