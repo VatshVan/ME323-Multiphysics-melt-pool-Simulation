@@ -26,6 +26,7 @@ scripts/make_cases.py     one case per row of the run table in config/baseline.j
 scripts/estimate_pool.py  Rosenthal pool size, Marangoni velocity, time-step estimates
 scripts/analyze_case.py   history plots, pool metrics, time series, field sections -> results/<case>/
 scripts/export_excel.py   all runs -> results/melt_pool_dataset.xlsx for the ML model
+scripts/export_3d.py      full-block (mirrored) 3D snapshots: VTK for ParaView + 3D images
 scripts/run_all.sh        run + analyse + export every case, skipping finished ones
 setup/                    install script + per-terminal environment
 external/AdditiveFOAM     solver source (git submodule, v2.0.0, OpenFOAM-14)
@@ -39,7 +40,8 @@ papers/                   reference papers
 source setup/env.sh
 python scripts/make_cases.py                       # one case per row of the run table
 nohup bash scripts/run_all.sh > run_all.log 2>&1 &   # run, analyse, export all (resumable)
-# results: results/<case>/ (plots, summary.json, timeseries.csv)
+# results: results/<case>/ (plots, 3D images, summary.json, timeseries.csv)
+#          cases/<case>/VTK_full/*.vtu (full-block 3D fields for ParaView)
 #          results/melt_pool_dataset.xlsx (runs / timeseries / solidification / columns)
 ```
 
