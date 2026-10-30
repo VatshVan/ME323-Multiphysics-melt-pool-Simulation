@@ -59,6 +59,8 @@ COLUMNS = {
     "qs_depth_mm": ("Quasi-steady pool depth (liquidus)", "mm"),
     "qs_width_mm": ("Quasi-steady pool full width (liquidus)", "mm"),
     "qs_length_mm": ("Quasi-steady pool length (liquidus)", "mm"),
+    "qs_marangoni_snapshots_s": ("Snapshot times averaged for the qs_ Marangoni columns (the steady window, "
+                                 "or the last snapshot with a pool before it ends)", "s"),
     **{f"qs_{k}": (f"Quasi-steady (snapshot mean in the steady window): {v[0]}", v[1]) for k, v in {
         "gradT_surface_max_K_mm": ("max surface temperature gradient", "K/mm"),
         "gradT_surface_mean_K_mm": ("mean surface temperature gradient", "K/mm"),
@@ -216,10 +218,16 @@ def run_row(s, mg=None):
         "crater_cooling_rate_median_K_s": get(sol, "crater", "cooling_rate_K_s", "median"),
         "crater_R_median_mm_s": (get(sol, "crater", "R_m_s", "median") or np.nan)*1e3,
     })
-    # Marangoni: steady values = mean over snapshots in the quasi-steady window
+    # Marangoni: steady values = mean over snapshots in the quasi-steady window;
+    # if no snapshot falls in it (e.g. 9 mm/s: window 0.27-0.44 s, snapshots
+    # every 0.25 s), the last snapshot with a pool before the window ends
     if mg is not None:
         lo, hi = s["quasi_steady_window_s"]
-        w = mg[(mg["time_s"] >= lo) & (mg["time_s"] <= hi) & (mg["surface_liquid_area_mm2"] > 0)]
+        pool = mg[(mg["time_s"] <= hi) & (mg["surface_liquid_area_mm2"] > 0)]
+        w = pool[pool["time_s"] >= lo]
+        if w.empty:
+            w = pool.tail(1)
+        row["qs_marangoni_snapshots_s"] = " ".join(f"{t:g}" for t in w["time_s"])
         for k in ("gradT_surface_max_K_mm", "gradT_surface_mean_K_mm", "marangoni_stress_max_Pa",
                   "marangoni_stress_mean_Pa", "U_surface_max_m_s", "U_surface_mean_m_s",
                   "surface_flow_direction", "surface_liquid_area_mm2",
