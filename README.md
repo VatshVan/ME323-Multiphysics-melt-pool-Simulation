@@ -55,8 +55,9 @@ The first implementation will focus on:
 5.  Marangoni surface-tension effects.
 6.  Thermal boundary conditions, including convection and radiation as
     specified for the case.
-7.  A scan-speed study (1, 1.5 and 2 mm/s) on a fixed 150 µm grid. (A
-    200/150/100 µm mesh study was planned first and replaced by this.)
+7.  A laser-parameter study (scan speed, power, absorptivity, beam radius)
+    on a fixed 200 µm grid. (A 200/150/100 µm mesh study was planned first
+    and replaced by this.)
 8.  Recording time-dependent fields and quantities that describe
     melt-pool formation, flow, cooling, and solidification.
 
@@ -74,10 +75,12 @@ later specifies otherwise.
     track centreline.
 -   **Fine-grid region (ROI):** 5 mm × 5 mm corner at the symmetry plane and
     the top surface, along the whole length; graded to 0.6 mm cells outside.
--   **Laser:** Gaussian beam of 2.5 mm 1/e² radius, 7.14 kW at absorptivity
-    0.35 (2.5 kW absorbed), along x = 23 → 27 mm at 1, 1.5 or 2 mm/s, then
-    3 s with the laser off. Chosen in trial runs so the melt pool is at least
-    2.5 mm deep while staying below the boiling point (`docs/SIMULATION_PLAN.md` §7).
+-   **Laser:** Gaussian beam moving along x on the symmetry plane; speed,
+    power, absorptivity and radius vary per run (table below). The trial runs
+    showed that a ≥ 2.5 mm deep pool needs slow scans (1 mm/s, 2.5 kW
+    absorbed, 2.5 mm radius: 3.4 mm deep; `docs/SIMULATION_PLAN.md` §7).
+-   **Dataset runs** use a 24 mm long block (as the trial runs) to fit the
+    ~30 min per run budget; the 50 mm block is supported by the same scripts.
 
 ## Physics and Model Components
 
@@ -148,19 +151,32 @@ using them in a simulation. They may relate to the
 mushy-zone/phase-change formulation rather than directly to the
 Marangoni coefficient.
 
-## Scan-Speed Study
+## Laser-Parameter Study (dataset)
 
-Three cases on the same fixed grid (150 µm in the fine region), identical
-except for the scan speed:
+All runs use the same fixed grid (200 µm in the fine region) and model; only
+the laser settings change. Template: 24 × 10 (half) × 8 mm block, laser from
+x = 4 mm towards x = 20 mm, 5 s of simulated time per run (~25 min on 8
+cores). At 5 mm/s the laser reaches x = 20 mm at 3.2 s and is then off, so
+those runs also record cooling and solidification.
 
-  Case              Scan speed   Simulated time
-  ---------------- ------------ ----------------
-  `cases/v1mmps`       1 mm/s          7 s
-  `cases/v1.5mmps`   1.5 mm/s        5.7 s
-  `cases/v2mmps`       2 mm/s          5 s
+| Run | Speed (mm/s) | Laser power (W) | Absorptivity | Absorbed (kW) | Beam radius (mm) |
+|---|---|---|---|---|---|
+| R01 | 5 | 3333 | 0.30 | 1.0 | 1.5 |
+| R02 | 5 | 3750 | 0.40 | 1.5 | 2.0 |
+| R03 | 5 | 5714 | 0.35 | 2.0 | 2.0 |
+| R04 | 5 | 8571 | 0.35 | 3.0 | 3.0 |
+| R05 | 3 | 5000 | 0.30 | 1.5 | 2.0 |
+| R06 | 3 | 6250 | 0.40 | 2.5 | 2.5 |
+| R07 | 3 | 7500 | 0.40 | 3.0 | 3.0 |
+| R08 | 2 | 5714 | 0.35 | 2.0 | 2.5 |
+| R09 | 2 | 8333 | 0.30 | 2.5 | 2.5 |
+| R10 | 1 | 5000 | 0.30 | 1.5 | 2.0 |
+| R11 | 1 | 5000 | 0.40 | 2.0 | 2.0 |
+| R12 | 1.5 | 8571 | 0.35 | 3.0 | 3.0 |
 
-The fine region (uniform cells) covers x = 14 → 36 mm, y = 0 → 8 mm and
-z = 0 → −5 mm; cells grow to 0.6 mm towards the far boundaries.
+In this model only laser power × absorptivity enters, so absorptivity is a
+dataset column but not an independent physical input. The seven trial runs
+A–G (`docs/SIMULATION_PLAN.md` §7) are extra rows of the same dataset.
 
 ## Quantities to Record
 
@@ -175,10 +191,10 @@ following:
 -   Evolution of the melt pool while the laser is present.
 -   Cooling behind the moving laser source.
 -   Cooling rate and solidification behaviour.
--   Differences in these quantities across the three scan speeds.
+-   Differences in these quantities across the laser settings.
 
-The primary emphasis is on physical behaviour and its sensitivity to scan
-speed. The recorded data are also exported as an Excel workbook for a
+The primary emphasis is on physical behaviour and its sensitivity to the
+laser settings. The recorded data are also exported as an Excel workbook for a
 machine-learning model (`scripts/export_excel.py`). Energy-balance reporting and computational-cost
 benchmarking are not primary deliverables in the current scope.
 
@@ -233,10 +249,9 @@ Given by the user: material, block size, symmetry, ROI, beam diameter, scan
 speed, mesh sizes, A_mush and B. Chosen by us and to be confirmed with the
 TA (reasoning in `config/baseline.json` and `docs/SIMULATION_PLAN.md` §8):
 
--   Laser power 7.14 kW with absorptivity 0.35 (2.5 kW absorbed) and a
-    2.5 mm beam radius, wider than the 3 mm diameter first specified.
--   Track x = 23 → 27 mm (4 mm) and 3 s cooling time.
--   Fixed grid size of 150 µm and the speeds 1, 1.5 and 2 mm/s.
+-   The 12-run table above (ranges: 1–5 mm/s, 1–3 kW absorbed, 0.30–0.40
+    absorptivity, 1.5–3 mm beam radius).
+-   Fixed grid size of 200 µm and the 24 mm block with 5 s per run.
 -   Bottom-surface heat transfer (h = 25 W/m²K, no radiation).
 -   Which outputs and comparison times the TA expects.
 

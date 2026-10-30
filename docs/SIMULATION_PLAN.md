@@ -90,22 +90,21 @@ receives exactly half the power (checked: 262.5 W of 1500 × 0.35 = 525 W).
 ```
 z = 0      top: marangoni (U), mixedTemperature h_top + ε (T)
 y = 0      symmetry: symmetryPlane (track centreline)
-y = 10 mm, x = 0, x = 50 mm: sides: noSlip, mixedTemperature h_sides + ε
+y = 10 mm, x = 0, x = L: sides: noSlip, mixedTemperature h_sides + ε
 z = −8 mm  bottom: noSlip, mixedTemperature h_bottom (no radiation)
 
-x: 0 → 14 mm graded 0.6 mm → Δ;  14 → 36 mm uniform Δ;  36 → 50 mm graded Δ → 0.6 mm
+x: 0 → 1 mm graded;  1 → 23 mm uniform Δ;  23 → 24 mm graded   (L = 24 mm)
 y: 0 → 8 mm uniform Δ, then graded to 0.6 mm at y = 10 mm
 z: 0 → −5 mm uniform Δ, then graded to 0.6 mm at z = −8 mm
-laser: x = 23 → 27 mm along y = 0 at speed v, then 3 s off
+laser: from x = 4 mm towards x = 20 mm along y = 0; every run lasts 5 s
 ```
 
-The real block is 50 × 20 × 8 mm; we model the half y ≥ 0. Δ = 150 µm
-(fixed); 577 k cells. One case per scan speed: `cases/v1mmps`,
-`cases/v1.5mmps`, `cases/v2mmps` (7, 5.7 and 5 s of simulated time).
-
-The fine region is wider than the 5 × 5 mm first specified: at 1 mm/s and
-2.5 kW the pool reaches ~17 mm full width (8.5 mm half width) and ~3.4 mm
-depth (test G, §7).
+Δ = 200 µm (fixed); 172 k cells. One case per row of the run table in
+`config/baseline.json` (`cases/R01` … `cases/R12`; table in the README).
+The fine region is wider than the 5 × 5 mm first specified because slow,
+high-power runs make pools up to ~17 mm wide (8.5 mm half width). The
+generator also supports the 50 mm block (set `length_x`, `fine_x_*`,
+`x_start`, `x_end`).
 
 ## 4. Outputs, and how they map to the README's list
 
@@ -122,24 +121,25 @@ depth (test G, §7).
 
 1. **Smoke test:** the unmodified `AMB2018-02-B` tutorial (docs/SETUP.md).
 2. **Mesh check:** `blockMesh && checkMesh` on each case.
-3. **Short smoke run (0.2 s) of each case:** absorbed power = ηP/2, melting
-   starts, flow switches on, no errors.
-4. **Full runs:** `./Allrun` in each `cases/v*mmps` (resumable: re-run
+3. **Short smoke runs (0.2 s):** absorbed power = ηP/2, melting starts,
+   flow switches on, no errors.
+4. **Full runs:** `bash scripts/run_all.sh` (or `./Allrun` per case; resumable: re-run
    `./Allrun` after an interruption; the solidification events of the
    segment before the restart are lost, because AdditiveFOAM writes them
    only at the end of a run).
 5. **Analysis:** `scripts/analyze_case.py` per case, then
-   `scripts/export_excel.py` for the ML workbook.
+   `scripts/export_excel.py` for the ML workbook (`run_all.sh` does both).
 
-## 6. Scan-speed analysis
+## 6. Laser-parameter analysis
 
-- **Compare across speeds:** quasi-steady pool depth, width, length;
-  T_max; |U|_max; cooling rate, G, R, G/R at the pool bottom; time to full
-  solidification after the laser stops.
-- **Expected trends:** slower scan → more energy per mm (line energy
-  P_abs/v) → deeper, wider pool, lower cooling rate and G·R, larger G/R.
+- **Compare across runs:** quasi-steady pool depth, width, length (mean
+  over the last 40% of laser-on time); T_max; |U|_max; cooling rate, G, R,
+  G/R; time to full solidification after the laser stops (5 mm/s runs).
+- **Expected trends:** more energy per mm (P_abs/v) → deeper, wider pool,
+  lower cooling rate; larger beam at the same power → lower peak T, wider
+  and shallower pool.
 - **ML workbook** (`results/melt_pool_dataset.xlsx`): `runs` (one row per
-  speed), `timeseries` (every run every 0.01 s), `solidification` (every
+  run), `timeseries` (every run every 0.01 s), `solidification` (every
   solidification event in the fine region), `columns` (units).
 
 ## 7. Laser settings and how they were chosen
@@ -167,10 +167,9 @@ is stable (max Courant 0.90).
 
 ## 8. Remaining choices to confirm with the TA
 
-1. Laser power, absorptivity and beam radius (chosen: 7.14 kW, η = 0.35,
-   r = 2.5 mm, from test G).
-2. Track x = 23 → 27 mm and 3 s of cooling (chosen).
-3. Bottom boundary: h = 25 W/m²K without radiation (Pariona's workbench
+1. The run-table ranges (1–5 mm/s, 1–3 kW absorbed, η 0.30–0.40,
+   r 1.5–3 mm) and the 24 mm block / 5 s per run.
+2. Bottom boundary: h = 25 W/m²K without radiation (Pariona's workbench
    h_d has no value); Gao instead keeps the bottom at room temperature.
-4. Whether AdditiveFOAM's built-in mushy-zone damping is acceptable, or the
+3. Whether AdditiveFOAM's built-in mushy-zone damping is acceptable, or the
    exact Farzadi form with B should be coded.
