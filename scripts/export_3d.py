@@ -121,7 +121,8 @@ def render(full, png, t, xb, laser_on, T_sol, T_liq):
     if laser_on:
         p.add_mesh(pv.Cone(center=(xb, 0, 2e-3), direction=(0, 0, -1),
                            height=4e-3, radius=0.5e-3), color="red", label="laser")
-    p.add_legend(bcolor="white", face=None, size=(0.26, 0.11), loc="upper right")
+    if laser_on or outlines.n_points:      # nothing labelled once all is solid
+        p.add_legend(bcolor="white", face=None, size=(0.16, 0.07), loc="lower center")
     p.add_text(f"t = {t:g} s, beam at x = {xb*1e3:.1f} mm"
                f"{'' if laser_on else ' (laser off)'}\n"
                "full width (mirrored at y = 0), front quadrant cut away",

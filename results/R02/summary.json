@@ -1,0 +1,91 @@
+{
+  "case": "R02",
+  "case_path": "/home/vatshvan/Desktop/ME323-Multiphysics-melt-pool-Simulation/cases/R02",
+  "inputs": {
+    "cell_size_m": 0.0002,
+    "n_cells": 172260,
+    "laser_power_W": 3750.0,
+    "absorptivity": 0.4,
+    "absorbed_power_W": 1500.0,
+    "beam_radius_m": 0.002,
+    "source_depth_m": 5e-05,
+    "scan_speed_m_s": 0.005,
+    "track_start_m": 0.004,
+    "track_end_m": 0.02,
+    "line_energy_J_m": 300000.0,
+    "dSigmadT_N_mK": -0.00026,
+    "mu_Pa_s": 0.0035,
+    "rho_kg_m3": 4428.0,
+    "DAS_m": 7.937253933193772e-05
+  },
+  "solidus_K": 1878.0,
+  "liquidus_K": 1928.0,
+  "laser_off_s": 3.2,
+  "run_end_s": 5.0,
+  "laser_on_at_end": false,
+  "first_melting_s": 0.0068080782,
+  "fully_liquid_surface_s": 0.0091172449,
+  "pool_fully_solidified_s": 3.4652661,
+  "peak_T_K": 2912.67901,
+  "peak_U_m_s": 0.331231183,
+  "quasi_steady_window_s": [
+    1.92,
+    3.2
+  ],
+  "quasi_steady": {
+    "T_max_K": {
+      "mean": 2760.6629324660194,
+      "std": 1.228790570130387
+    },
+    "U_max_m_s": {
+      "mean": 0.32634673542589,
+      "std": 0.0012781196680565264
+    },
+    "pool_length_mm": {
+      "mean": 9.813278709288026,
+      "std": 0.12252974486209411
+    },
+    "pool_width_full_mm": {
+      "mean": 8.894818235728156,
+      "std": 0.01535586493628421
+    },
+    "pool_depth_mm": {
+      "mean": 0.8309952918802589,
+      "std": 0.0009168362789550901
+    }
+  },
+  "solidification": {
+    "n_events": 6568,
+    "cooling_rate_K_s": {
+      "median": 731.19013,
+      "p10": 41.397428500000004,
+      "p90": 2266.9049800000007
+    },
+    "G_K_m": {
+      "median": 276940.83858468104,
+      "p10": 27599.619779568933,
+      "p90": 661200.9519237141
+    },
+    "R_m_s": {
+      "median": 0.00260112885,
+      "p10": 0.000139845627,
+      "p90": 0.0336168888
+    },
+    "G_over_R_Ks_m2": {
+      "median": 94444557.0218997,
+      "p10": 950925.484107318,
+      "p90": 2100273614.1395428
+    },
+    "GR_K_s": {
+      "median": 731.190144725025,
+      "p10": 41.397427823108785,
+      "p90": 2266.9049676907375
+    },
+    "pool_bottom_centreline": {
+      "z_m": -0.0007,
+      "cooling_rate_K_s": 198.02462733750002,
+      "G_K_m": 306055.66972050676,
+      "R_m_s": 0.0008348855879999999
+    }
+  }
+}
