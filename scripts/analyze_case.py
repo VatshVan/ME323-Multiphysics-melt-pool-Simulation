@@ -70,6 +70,82 @@ def first(t, mask):
     return float(t[i[0]]) if i.size else None
 
 
+def inputs(case):
+    """Run inputs, read back from the case files themselves."""
+    hs = (case/"constant"/"heatSourceDict").read_text()
+    tp = (case/"constant"/"transportProperties").read_text()
+    info = json.loads((case/"case_info.json").read_text())
+    x0, x1, v, t_off = scan(case)
+    power = float(next(l.split()[4] for l in (case/"constant"/"scanPath").read_text().splitlines()
+                       if l.split()[:1] == ["0"]))
+
+    def num(text, key):
+        return float(re.search(rf"^\s*{key}\s+(?:\[[^\]]*\]\s+)?\(?([0-9.eE+-]+)", text, re.M).group(1))
+
+    eta = num(hs, "eta")
+    return {
+        "cell_size_m": info["cell_size"],
+        "n_cells": info["mesh"]["n_cells"],
+        "laser_power_W": power,
+        "absorptivity": eta,
+        "absorbed_power_W": power*eta,
+        "beam_radius_m": num(hs, "radius"),
+        "source_depth_m": num(hs, "depth"),
+        "scan_speed_m_s": v,
+        "track_start_m": x0,
+        "track_end_m": x1,
+        "line_energy_J_m": power*eta/v,
+        "dSigmadT_N_mK": num(tp, "dSigmadT"),
+        "mu_Pa_s": num(tp, "mu"),
+        "rho_kg_m3": num(tp, "rho"),
+        "DAS_m": info["DAS"],
+    }
+
+
+def solidification(case, x_lo, x_hi):
+    """Statistics of AdditiveFOAM's solidification events (x,y,z,ts,cr,G,v)
+    for x_lo < x < x_hi. Written only when a run ends, so a run that was
+    resumed after an interruption has events from its last segment only."""
+    files = sorted(case.glob("solidificationData/solidification-data*.csv")) \
+        or sorted(case.glob("solidificationData/data_*.csv"))
+    if not files:
+        return None
+    d = np.vstack([np.atleast_2d(np.loadtxt(f, delimiter=",", skiprows=1)) for f in files])
+    d = d[(d[:, 0] > x_lo) & (d[:, 0] < x_hi)]
+    if d.size == 0:
+        return None
+    G = np.linalg.norm(d[:, 5:8], axis=1)
+    R = d[:, 8]
+    ok = R > 0
+
+    def q(a):
+        return {"median": float(np.median(a)), "p10": float(np.percentile(a, 10)),
+                "p90": float(np.percentile(a, 90))}
+
+    # Pool bottom on the centreline: deepest events within one cell of y = 0
+    centre = d[:, 1] < d[:, 1].min() + 1e-4
+    bottom = centre & (d[:, 2] < d[centre, 2].min() + 1e-4) if centre.any() else centre
+    return {
+        "n_events": int(len(d)),
+        "cooling_rate_K_s": q(d[:, 4]),
+        "G_K_m": q(G),
+        "R_m_s": q(R[ok]) if ok.any() else None,
+        "G_over_R_Ks_m2": q(G[ok]/R[ok]) if ok.any() else None,
+        "GR_K_s": q(G[ok]*R[ok]) if ok.any() else None,
+        "pool_bottom_centreline": {
+            "z_m": float(d[bottom, 2].mean()),
+            "cooling_rate_K_s": float(d[bottom, 4].mean()),
+            "G_K_m": float(G[bottom].mean()),
+            "R_m_s": float(R[bottom].mean()),
+        } if bottom.any() else None,
+    }
+
+
+def run_name(case):
+    """cases/mesh_200um -> mesh_200um; elsewhere prefix the parent folder."""
+    return case.name if case.parent.name == "cases" else f"{case.parent.name}_{case.name}"
+
+
 def history(case, out):
     Ts, Tl = solidus_liquidus(case)
     x0, x1, v, t_off = scan(case)
@@ -86,9 +162,19 @@ def history(case, out):
     def stat(a, m):
         return {"mean": float(a[m].mean()), "std": float(a[m].std())} if m.any() else None
 
+    # Time series on the pool-dimension time base, for later fitting/optimisation
+    np.savetxt(out/"timeseries.csv",
+               np.column_stack([tp, np.interp(tp, tT, Tmax), np.interp(tp, tU, Umax),
+                                L, W, D, np.interp(tp, tps, Ls),
+                                np.interp(tp, tps, Ws), np.interp(tp, tps, Ds)]),
+               delimiter=",", comments="",
+               header="time_s,T_max_K,U_max_m_s,length_liq_m,width_full_liq_m,depth_liq_m,"
+                      "length_sol_m,width_full_sol_m,depth_sol_m")
+
     after = tps > t_off
     summary = {
-        "case": case.name,
+        "case": run_name(case),
+        "inputs": inputs(case),
         "solidus_K": Ts, "liquidus_K": Tl,
         "laser_off_s": t_off,
         "first_melting_s": first(tT, Tmax >= Ts),
@@ -104,6 +190,8 @@ def history(case, out):
             "pool_width_full_mm": stat(W*1e3, win),
             "pool_depth_mm": stat(D*1e3, win),
         },
+        # events solidified while the beam crossed the quasi-steady window
+        "solidification": solidification(case, x0 + v*0.4*t_off, x0 + v*0.9*t_off),
     }
 
     fig, ax = plt.subplots(3, 1, figsize=(8, 9), sharex=True)
@@ -124,7 +212,7 @@ def history(case, out):
         a.axvline(t_off, c="r", lw=0.8, ls="--")
         a.axvspan(0.4*t_off, 0.9*t_off, color="0.9", zorder=0)
         a.grid(alpha=0.3)
-    ax[0].set_title(f"{case.name}: laser off at {t_off:g} s (red), "
+    ax[0].set_title(f"{run_name(case)}: laser off at {t_off:g} s (red), "
                     "quasi-steady window shaded", fontsize=9)
     fig.tight_layout()
     fig.savefig(out/"history.png", dpi=150)
@@ -245,7 +333,7 @@ def main():
     args = p.parse_args()
 
     case = args.case.resolve()
-    out = ROOT/"results"/case.name
+    out = ROOT/"results"/run_name(case)
     out.mkdir(parents=True, exist_ok=True)
 
     summary = history(case, out)
