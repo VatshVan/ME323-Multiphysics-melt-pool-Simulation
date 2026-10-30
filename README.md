@@ -22,7 +22,7 @@ pending.
 config/baseline.json      all physical/numerical parameters (CONFIRMED / CHOSEN / SOURCED)
 materials/                Ti6Al4V.cfg (+ cited sources), pure-Al reference file
 templates/case/           static OpenFOAM case files (fields, numerics, Allrun)
-scripts/make_cases.py     generates cases/mesh_200um, mesh_150um, mesh_100um
+scripts/make_cases.py     generates one case per scan speed: cases/v1mmps, v1.5mmps, v2mmps
 scripts/estimate_pool.py  Rosenthal pool size, Marangoni velocity, time-step estimates
 scripts/analyze_case.py   history plots, pool metrics, time series, field sections -> results/<case>/
 scripts/collect_dataset.py  all runs -> results/dataset.csv (inputs + outputs, one row per run)
@@ -37,7 +37,9 @@ papers/                   reference papers
 # from the project root, on Ubuntu 22.04/24.04 (see docs/SETUP.md for the one-time install)
 source setup/env.sh
 python scripts/make_cases.py
-cd cases/mesh_200um && ./Allrun
+cd cases/v1mmps && ./Allrun && cd ../..        # re-run ./Allrun to resume after an interruption
+python scripts/analyze_case.py cases/v1mmps     # plots + summary.json + timeseries.csv
+python scripts/export_excel.py                  # all runs -> results/melt_pool_dataset.xlsx
 ```
 
 ## Initial Scope
@@ -52,8 +54,8 @@ The first implementation will focus on:
 5.  Marangoni surface-tension effects.
 6.  Thermal boundary conditions, including convection and radiation as
     specified for the case.
-7.  A mesh-refinement comparison using target cell sizes of 200, 150,
-    and 100 micrometres.
+7.  A scan-speed study (1, 1.5 and 2 mm/s) on a fixed 150 µm grid. (A
+    200/150/100 µm mesh study was planned first and replaced by this.)
 8.  Recording time-dependent fields and quantities that describe
     melt-pool formation, flow, cooling, and solidification.
 
@@ -71,8 +73,10 @@ later specifies otherwise.
     track centreline.
 -   **Fine-grid region (ROI):** 5 mm × 5 mm corner at the symmetry plane and
     the top surface, along the whole length; graded to 0.6 mm cells outside.
--   **Laser:** 3 mm diameter Gaussian beam (1.5 mm 1/e² radius), 5 mm/s,
-    from x = 5 to 45 mm, then 1 s with the laser off.
+-   **Laser:** Gaussian beam of 2.5 mm 1/e² radius, 7.14 kW at absorptivity
+    0.35 (2.5 kW absorbed), along x = 23 → 27 mm at 1, 1.5 or 2 mm/s, then
+    3 s with the laser off. Chosen in trial runs so the melt pool is at least
+    2.5 mm deep while staying below the boiling point (`docs/SIMULATION_PLAN.md` §7).
 
 ## Physics and Model Components
 
@@ -143,26 +147,19 @@ using them in a simulation. They may relate to the
 mushy-zone/phase-change formulation rather than directly to the
 Marangoni coefficient.
 
-## Mesh-Refinement Plan
+## Scan-Speed Study
 
-Run three cases with the following target cell sizes in the ROI:
+Three cases on the same fixed grid (150 µm in the fine region), identical
+except for the scan speed:
 
-  Case             Target cell size
-  -------------- ------------------
-  Coarse                     200 µm
-  Intermediate               150 µm
-  Fine                       100 µm
+  Case              Scan speed   Simulated time
+  ---------------- ------------ ----------------
+  `cases/v1mmps`       1 mm/s          7 s
+  `cases/v1.5mmps`   1.5 mm/s        5.7 s
+  `cases/v2mmps`       2 mm/s          5 s
 
-Keep physical parameters, boundary conditions, laser settings, material
-properties, solver settings, and output times consistent across cases.
-Use local refinement around the 5 mm × 5 mm ROI if supported by the
-selected meshing workflow; the mesh can remain coarser farther from the
-melt pool.
-
-The comparison should quantify changes between resolutions. Three grids
-provide a refinement study, but grid independence should only be claimed
-if the selected outputs show sufficiently small changes and the
-numerical behaviour supports that conclusion.
+The fine region (uniform cells) covers x = 14 → 36 mm, y = 0 → 8 mm and
+z = 0 → −5 mm; cells grow to 0.6 mm towards the far boundaries.
 
 ## Quantities to Record
 
@@ -177,11 +174,11 @@ following:
 -   Evolution of the melt pool while the laser is present.
 -   Cooling behind the moving laser source.
 -   Cooling rate and solidification behaviour.
--   Differences in these quantities across the 200, 150, and 100 µm
-    meshes.
+-   Differences in these quantities across the three scan speeds.
 
-The primary emphasis is on physical behaviour and mesh-resolution
-sensitivity. Energy-balance reporting and computational-cost
+The primary emphasis is on physical behaviour and its sensitivity to scan
+speed. The recorded data are also exported as an Excel workbook for a
+machine-learning model (`scripts/export_excel.py`). Energy-balance reporting and computational-cost
 benchmarking are not primary deliverables in the current scope.
 
 ## Implementation Plan
@@ -235,8 +232,10 @@ Given by the user: material, block size, symmetry, ROI, beam diameter, scan
 speed, mesh sizes, A_mush and B. Chosen by us and to be confirmed with the
 TA (reasoning in `config/baseline.json` and `docs/SIMULATION_PLAN.md` §8):
 
--   Laser power 1.5 kW with absorptivity 0.35 (525 W absorbed).
--   Track start/end (x = 5 → 45 mm) and 1 s cooling time.
+-   Laser power 7.14 kW with absorptivity 0.35 (2.5 kW absorbed) and a
+    2.5 mm beam radius, wider than the 3 mm diameter first specified.
+-   Track x = 23 → 27 mm (4 mm) and 3 s cooling time.
+-   Fixed grid size of 150 µm and the speeds 1, 1.5 and 2 mm/s.
 -   Bottom-surface heat transfer (h = 25 W/m²K, no radiation).
 -   Which outputs and comparison times the TA expects.
 

@@ -93,22 +93,19 @@ y = 0      symmetry: symmetryPlane (track centreline)
 y = 10 mm, x = 0, x = 50 mm: sides: noSlip, mixedTemperature h_sides + ε
 z = −8 mm  bottom: noSlip, mixedTemperature h_bottom (no radiation)
 
-x: 0 → 50 mm, uniform Δ          laser: x = 5 → 45 mm along y = 0, then 1 s off
-y: 0 → 5 mm uniform Δ, then graded to 0.6 mm at y = 10 mm
+x: 0 → 14 mm graded 0.6 mm → Δ;  14 → 36 mm uniform Δ;  36 → 50 mm graded Δ → 0.6 mm
+y: 0 → 8 mm uniform Δ, then graded to 0.6 mm at y = 10 mm
 z: 0 → −5 mm uniform Δ, then graded to 0.6 mm at z = −8 mm
+laser: x = 23 → 27 mm along y = 0 at speed v, then 3 s off
 ```
 
-The real block is 50 × 20 × 8 mm; we model the half y ≥ 0. The 5 × 5 mm
-fine-grid corner sits at the symmetry plane and the top surface.
+The real block is 50 × 20 × 8 mm; we model the half y ≥ 0. Δ = 150 µm
+(fixed); 577 k cells. One case per scan speed: `cases/v1mmps`,
+`cases/v1.5mmps`, `cases/v2mmps` (7, 5.7 and 5 s of simulated time).
 
-| Case | Δ in ROI (actual) | Cells |
-|---|---|---|
-| `cases/mesh_200um` | 200 µm | 322 k |
-| `cases/mesh_150um` | 151.5 µm (y, z), 150.2 µm (x) | 671 k |
-| `cases/mesh_100um` | 100 µm | 2.04 M |
-
-Cell counts are rounded to whole numbers, so the 150 µm case is 1% off
-target in the 5 mm ROI (33 cells).
+The fine region is wider than the 5 × 5 mm first specified: at 1 mm/s and
+2.5 kW the pool reaches ~17 mm full width (8.5 mm half width) and ~3.4 mm
+depth (test G, §7).
 
 ## 4. Outputs, and how they map to the README's list
 
@@ -121,44 +118,59 @@ target in the 5 mm ROI (33 cells).
 | Cooling rate, G, R, G/R, G·R | `solidificationData` (x, y, z, t_s, cooling rate, G vector, v) within the ROI box |
 | Flow pattern / vortices | ParaView: U glyphs on cross-sections x = const |
 
-## 5. Run order (validate step by step)
+## 5. Run order
 
 1. **Smoke test:** the unmodified `AMB2018-02-B` tutorial (docs/SETUP.md).
-2. **Mesh check:** `blockMesh && checkMesh` on all three cases.
-3. **Short trial (0.4 s, 200 µm):** absorbed power = ηP/2, T_max below
-   T_boil = 3533 K, outward surface flow, ~zero velocity on solid surface.
-4. **Full runs:** 200 → 150 → 100 µm with identical inputs.
-5. **Optional:** conduction-only reference (`nOuterCorrectors 0`) to show
-   the effect of Marangoni flow; flip the sign of dσ/dT (Fuhrich).
+2. **Mesh check:** `blockMesh && checkMesh` on each case.
+3. **Short smoke run (0.2 s) of each case:** absorbed power = ηP/2, melting
+   starts, flow switches on, no errors.
+4. **Full runs:** `./Allrun` in each `cases/v*mmps` (resumable: re-run
+   `./Allrun` after an interruption; the solidification events of the
+   segment before the restart are lost, because AdditiveFOAM writes them
+   only at the end of a run).
+5. **Analysis:** `scripts/analyze_case.py` per case, then
+   `scripts/export_excel.py` for the ML workbook.
 
-## 6. Mesh-study analysis
+## 6. Scan-speed analysis
 
-- **Compare:** steady pool width, depth, length and cross-section area;
-  T_max; |U|_max; centreline cooling rate; G/R at the pool bottom.
-- **Refinement ratios:** 1.33 and 1.5 are unequal, so use the generalised
-  Richardson/GCI procedure (Celik et al., J. Fluids Eng. 130, 2008), which
-  handles non-constant ratios.
-- **Robust metrics:** integral quantities (pool area/volume) converge more
-  cleanly than point peaks (T_max, |U|_max). Fuhrich notes that peak
-  gradients behind the source keep growing under refinement. Report the
-  peaks, but only claim grid independence for the metrics whose changes are
-  small and monotonic.
+- **Compare across speeds:** quasi-steady pool depth, width, length;
+  T_max; |U|_max; cooling rate, G, R, G/R at the pool bottom; time to full
+  solidification after the laser stops.
+- **Expected trends:** slower scan → more energy per mm (line energy
+  P_abs/v) → deeper, wider pool, lower cooling rate and G·R, larger G/R.
+- **ML workbook** (`results/melt_pool_dataset.xlsx`): `runs` (one row per
+  speed), `timeseries` (every run every 0.01 s), `solidification` (every
+  solidification event in the fine region), `columns` (units).
 
-## 7. Laser power choice
+## 7. Laser settings and how they were chosen
 
-`scripts/estimate_pool.py` (conduction-only Rosenthal point source, Ti-6Al-4V
-at 5 mm/s) was used to pick the power: **1.5 kW × η = 0.35 → 525 W absorbed**
-gives a pool about as wide as the 3 mm beam (Rosenthal: 3.1 × 1.6 mm, 8 / 10
-/ 16 cells deep on the three meshes). The 0.4 s trial gave T_max ≈ 2410 K
-(below boiling) and a wider, shallower pool than Rosenthal (3.3 × 0.5 mm),
-as expected with outward Marangoni flow.
+Target: melt pool at least 2.5 mm deep, peak temperature below T_boil =
+3533 K (no evaporation in the model), pool inside the 20 mm block. Trial
+runs at 200 µm on a 24 mm block (`~/run/screen*`, not version-controlled):
 
-## 8. Remaining choices to confirm with the TF
+| Test | Speed | P_abs | Beam r | Depth | Full width | Peak T |
+|---|---|---|---|---|---|---|
+| — | 5 mm/s | 525 W | 1.5 mm | 0.55 mm (steady) | 3.7 mm | 2410 K |
+| A | 5 mm/s | 2.5 kW | 2.5 mm | 1.02 mm | 11.6 mm | 3057 K |
+| B | 5 mm/s | 3.5 kW | 2.5 mm | 1.15 mm (max 1.45) | 13.2 mm | 3391 K |
+| C | 5 mm/s | 3.5 kW | 3.0 mm | 1.16 mm (max 1.45) | 13.7 mm | 3161 K |
+| D | 2 mm/s | 1.5 kW | 2.0 mm | 1.04 mm | 10.4 mm | 2914 K |
+| E | 1 mm/s | 1.0 kW | 2.0 mm | 1.00 mm | 8.4 mm | 2640 K |
+| F | 1 mm/s | 2.0 kW | 2.5 mm | 2.40 mm (rising) | 13.0 mm | 2888 K |
+| **G** | **1 mm/s** | **2.5 kW** | **2.5 mm** | **3.35–3.4 mm (steady after ~3 s)** | 15 mm at 3 s, 20 mm at 5 s | 3068 K |
 
-1. Laser power and absorptivity (chosen: 1.5 kW, η = 0.35).
-2. Track x = 5 → 45 mm and 1 s of cooling (chosen).
+With dσ/dT < 0 the surface flow drives heat outward, so extra power
+mostly widens the pool (Fuhrich). Only slow scanning reached the target.
+At 1 mm/s the pool keeps widening, reaching the block's side wall after
+~5 s, so the track is limited to 4 mm. Test G also confirmed `maxCo` 0.9
+is stable (max Courant 0.90).
+
+## 8. Remaining choices to confirm with the TA
+
+1. Laser power, absorptivity and beam radius (chosen: 7.14 kW, η = 0.35,
+   r = 2.5 mm, from test G).
+2. Track x = 23 → 27 mm and 3 s of cooling (chosen).
 3. Bottom boundary: h = 25 W/m²K without radiation (Pariona's workbench
    h_d has no value); Gao instead keeps the bottom at room temperature.
 4. Whether AdditiveFOAM's built-in mushy-zone damping is acceptable, or the
    exact Farzadi form with B should be coded.
-5. Which output times and quantities to compare across meshes.
