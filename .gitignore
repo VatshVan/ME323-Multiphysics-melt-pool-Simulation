@@ -25,3 +25,6 @@ setup/*.log
 # resampled. Regenerate with scripts/analyze_case.py.
 results/*/timeseries.csv
 run_all.log
+
+# Mirrored full-block VTK snapshots (scripts/export_3d.py), ~12 MB each
+VTK_full/

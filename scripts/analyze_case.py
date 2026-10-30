@@ -4,6 +4,8 @@ field sections.
 
 Writes to results/<case name>/:
     history.png     T_max, |U|_max and pool length/width/depth vs time
+    3d_<t>s.png     mirrored full-block 3D view (scripts/export_3d.py, which
+                    also writes cases/<case>/VTK_full/*.vtu for ParaView)
     sections_<t>.png   longitudinal (y = 0) and cross-section (x = beam)
                     cuts: temperature, solidus/liquidus, liquid fraction 0.5
                     and velocity vectors, mirrored to the full width
@@ -21,6 +23,7 @@ import argparse
 import json
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 import matplotlib
@@ -336,6 +339,8 @@ def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("case", type=Path)
     p.add_argument("--no-sections", action="store_true", help="skip the field sections")
+    p.add_argument("--no-3d", action="store_true",
+                   help="skip the mirrored full-block 3D export (scripts/export_3d.py)")
     p.add_argument("--times", type=float, nargs="*", help="section times (default: all written)")
     args = p.parse_args()
 
@@ -349,6 +354,11 @@ def main():
 
     if not args.no_sections:
         sections(case, out, args.times or written_times(case))
+    if not (args.no_sections or args.no_3d):
+        cmd = [sys.executable, str(ROOT/"scripts"/"export_3d.py"), str(case)]
+        if args.times:
+            cmd += ["--times"] + [f"{t:g}" for t in args.times]
+        subprocess.run(cmd, check=True)
     print(f"wrote {out.relative_to(ROOT)}")
 
 
