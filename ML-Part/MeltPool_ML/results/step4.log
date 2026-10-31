@@ -1,0 +1,49 @@
+/home/vatshvan/.local/lib/python3.11/site-packages/matplotlib/projections/__init__.py:63: UserWarning: Unable to import Axes3D. This may be due to multiple versions of Matplotlib being installed (e.g. as a system package and as a pip package). As a result, the 3D projection is not available.
+  warnings.warn("Unable to import Axes3D. This may be due to multiple versions of "
+[W 2026-10-31 19:26:10,179] The 'greenlet' package is unavailable, falling back to sequential L-BFGS-B optimization. This may lead to slower suggestions.
+Forward predictions for the experiment (eta = 0.35):
+mode  laser_power_W  speed_mm_s  width_pred  width_3sigma  width_sim_same_inputs  depth_pred  T_max_pred   Ma_pred
+ MaB         1000.0         6.0       2.849         0.142                  2.831       0.370    2307.694 57521.967
+ MaB         1000.0         9.0       2.638         0.267                  2.610       0.329    2278.943 49703.110
+ MaB         1000.0        12.0       2.519         0.430                    NaN       0.307    2259.484 45156.876
+ MaB         1400.0         6.0       3.542         0.384                    NaN       0.459    2461.935 97204.010
+ MaB         1400.0         9.0       3.233         0.219                    NaN       0.406    2439.882 85370.320
+ MaB         1400.0        12.0       3.076         0.290                    NaN       0.378    2423.303 78819.132
+   B         1000.0         6.0       2.525         0.168                  2.588       0.643    2782.910     0.000
+   B         1000.0         9.0       2.341         0.289                  2.374       0.556    2710.002     0.000
+   B         1000.0        12.0       2.234         0.431                    NaN       0.513    2667.235     0.000
+   B         1400.0         6.0       2.933         0.569                    NaN       0.836    3123.842     0.000
+   B         1400.0         9.0       2.702         0.294                    NaN       0.722    3039.117     0.000
+   B         1400.0        12.0       2.573         0.126                    NaN       0.662    2988.734     0.000
+none         1000.0         6.0       2.526         0.184                  2.584       0.654    2783.007     0.000
+none         1000.0         9.0       2.351         0.295                  2.372       0.564    2708.458     0.000
+none         1000.0        12.0       2.249         0.426                    NaN       0.521    2665.407     0.000
+none         1400.0         6.0       2.907         0.521                    NaN       0.867    3145.899     0.000
+none         1400.0         9.0       2.693         0.261                    NaN       0.741    3048.627     0.000
+none         1400.0        12.0       2.572         0.113                    NaN       0.677    2993.672     0.000
+
+Width ratio W(1400)/W(1000) and exponent a, per flow mode:
+mode  speed_mm_s  ratio  ratio_3sigma  exponent_a  exponent_3sigma  exponent_a_able  exponent_3sigma_able  a_XGBoost  a_SVM  a_Neural Network  a_Random Forest  a_Bayesian Ridge  a_Gaussian Process
+ MaB         6.0  1.244         0.145       0.646            0.349            0.705                 0.238      0.579  0.724             0.800            0.443             0.615               0.715
+ MaB         9.0  1.227         0.113       0.606            0.275            0.644                 0.202      0.536  0.709             0.641            0.443             0.615               0.690
+ MaB        12.0  1.223         0.111       0.597            0.271            0.631                 0.213      0.534  0.693             0.591            0.443             0.615               0.704
+   B         6.0  1.162         0.226       0.439            0.608            0.505                 0.114      0.445  0.547             0.502            0.000             0.615               0.525
+   B         9.0  1.157         0.224       0.428            0.603            0.488                 0.151      0.404  0.532             0.493            0.000             0.615               0.521
+   B        12.0  1.157         0.224       0.426            0.604            0.485                 0.162      0.403  0.518             0.474            0.000             0.615               0.545
+none         6.0  1.151         0.214       0.413            0.578            0.465                 0.036      0.445  0.469             0.475            0.000             0.615               0.472
+none         9.0  1.148         0.213       0.405            0.576            0.454                 0.092      0.404  0.455             0.470            0.000             0.615               0.485
+none        12.0  1.148         0.215       0.405            0.580            0.453                 0.120      0.403  0.443             0.454            0.000             0.615               0.514
+
+Absorptivity by BO (self-test: simulated MaB widths (true eta = 0.35)): eta = 0.346, chi2 = 0.13, 1-sigma range 0.335-0.360  (3 tracks, 40 BO trials)
+
+Eq. 2 inverse design at 1400 W (MaB), speed for a target width:
+ target_width_mm              sampler  speed_mm_s  width_pred  width_3sigma    Fp  distance_to_data  trials_to_best
+            3.19              BO (GP)      10.690       3.141         0.220 0.683             0.365              39
+            3.19 direct |mu - W*| min       9.760       3.190         0.196   NaN               NaN             601
+            3.19       random (paper)      10.683       3.141         0.220 0.683             0.365              24
+            3.31              BO (GP)       7.999       3.370         0.217 0.833             0.353              26
+            3.31 direct |mu - W*| min       8.340       3.310         0.105   NaN               NaN             601
+            3.31       random (paper)       9.131       3.225         0.212 1.194             0.343              29
+            3.43              BO (GP)       6.653       3.480         0.278 0.539             0.310              27
+            3.43 direct |mu - W*| min       7.240       3.430         0.221   NaN               NaN             601
+            3.43       random (paper)       6.710       3.475         0.271 0.554             0.312              25

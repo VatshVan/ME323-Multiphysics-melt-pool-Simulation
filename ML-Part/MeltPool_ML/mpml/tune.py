@@ -50,6 +50,8 @@ def space(trial, algo, events=False):
         p.update(nu=trial.suggest_categorical("nu", [0.5, 1.5, 2.5]), n_restarts=1)
     if events:
         p["N"] = 1
+        if algo == "Gaussian Process":
+            p["k"] = i("k_gp", 2, 5)
     return p
 
 

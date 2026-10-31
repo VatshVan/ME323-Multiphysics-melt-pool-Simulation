@@ -9,7 +9,7 @@ model); G/R and G*R follow from them.
 Every split is grouped by run (events of one simulation are strongly
 correlated, a random split would leak). The holdout runs are the same as
 the run-level model's. SVR and the GP train on random subsamples of each
-fold (3000 / 1500 events); the other algorithms use every event.
+fold (3000 / 600 events; a GP fit costs ~n^3); the other algorithms use every event.
 
 Usage: python step3_events.py [--retune] [--smoke]
 """
@@ -34,8 +34,9 @@ from mpml.tune import tune
 OUT, MODELS = HERE/"results", HERE/"models"
 POSITION = ["s_track_mm", "y_over_halfwidth", "z_over_depth"]
 TARGETS = ["G_K_mm", "R_mm_s"]
-TRIALS, TUNE_ROWS = 15, 4000
-MAX_ROWS = {"SVM": 3000, "Gaussian Process": 1500}
+TRIALS = {"Gaussian Process": 6}  # others: 15
+TUNE_ROWS = {"Gaussian Process": 400, "SVM": 3000}  # others: 4000 events per fold model while tuning
+MAX_ROWS = {"SVM": 3000, "Gaussian Process": 600}
 SEED = 0
 
 
@@ -68,7 +69,7 @@ def _tune(args):
     torch.set_num_threads(2)
     algo, X, Y, groups, n = args
     t = time.time()
-    p, s = tune(algo, X, Y, n, seed=SEED, groups=groups, max_rows=TUNE_ROWS, events=True)
+    p, s = tune(algo, X, Y, n, seed=SEED, groups=groups, max_rows=TUNE_ROWS.get(algo, 4000), events=True)
     s["seconds"] = round(time.time() - t)
     return algo, p, s
 
@@ -83,7 +84,7 @@ def main():
     runs, ev = load_runs(), load_events()
     holdout = json.loads((MODELS/"run_params.json").read_text())["holdout"]
     if a.smoke:
-        OUT, TRIALS = HERE/"smoke"/"results", 2
+        OUT, TRIALS = HERE/"smoke"/"results", {a: 2 for a in ALGORITHMS}
         OUT.mkdir(parents=True, exist_ok=True)
         ev = ev.groupby("case", group_keys=False).apply(lambda d: d.sample(min(len(d), 300), random_state=0))
     test = ev["case"].isin(holdout).values
@@ -102,7 +103,7 @@ def main():
     else:
         params, scores = {}, {}
         with ProcessPoolExecutor(len(ALGORITHMS)) as ex:
-            for algo, p, s in ex.map(_tune, [(al, Xtr, Ytr, groups, TRIALS) for al in ALGORITHMS]):
+            for algo, p, s in ex.map(_tune, [(al, Xtr, Ytr, groups, TRIALS.get(al, 15)) for al in ALGORITHMS]):
                 params[algo], scores[algo] = p, s
                 print(f"tuned {algo:17s} F={s['F']:.3f} R2tr={s['r2_train']:.3f} R2val={s['r2_val']:.3f} "
                       f"({s['seconds']} s) {p}")

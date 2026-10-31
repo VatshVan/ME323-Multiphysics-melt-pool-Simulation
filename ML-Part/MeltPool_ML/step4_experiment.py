@@ -98,10 +98,17 @@ def width_ratio(model):
         _, _, A2 = model.width(ETA_NOMINAL*POWERS[1], SPEEDS, mode)
         ratio = A2/A1                          # per algorithm
         expo = np.log(ratio)/np.log(POWERS[1]/POWERS[0])
+        # RF (shallow trees) and Bayesian ridge (linear in log inputs, no
+        # flow x power terms) cannot represent a mode-dependent exponent;
+        # the "able" columns average the other four
+        able = [i for i, al in enumerate(model.m.ens) if al not in ("Random Forest", "Bayesian Ridge")]
         for i, v in enumerate(SPEEDS):
-            rows.append({"mode": mode, "speed_mm_s": v, "ratio": ratio[:, i].mean(),
-                         "ratio_3sigma": 3*ratio[:, i].std(), "exponent_a": expo[:, i].mean(),
-                         "exponent_3sigma": 3*expo[:, i].std()})
+            row = {"mode": mode, "speed_mm_s": v, "ratio": ratio[:, i].mean(),
+                   "ratio_3sigma": 3*ratio[:, i].std(), "exponent_a": expo[:, i].mean(),
+                   "exponent_3sigma": 3*expo[:, i].std(),
+                   "exponent_a_able": expo[able, i].mean(), "exponent_3sigma_able": 3*expo[able, i].std()}
+            row.update({f"a_{al}": expo[j, i] for j, al in enumerate(model.m.ens)})
+            rows.append(row)
     df = pd.DataFrame(rows)
     df.to_csv(OUT/"experiment_width_ratio.csv", index=False)
     print("\nWidth ratio W(1400)/W(1000) and exponent a, per flow mode:\n" + df.round(3).to_string(index=False))
@@ -191,7 +198,15 @@ def main():
                          "distance_to_data": b.user_attrs["distance"],
                          "trials_to_best": b.number + 1})
             hist[(W, smp)] = np.minimum.accumulate([t.value for t in st.trials])
-    eq2 = pd.DataFrame(rows)
+    # direct answer for comparison: the speed where the mean prediction equals W*
+    vv = np.linspace(6.0, 12.0, 601)
+    mu_v, sd_v, _ = model.width(ETA_NOMINAL*1400.0, vv, "MaB")
+    for W in targets:
+        i = int(np.argmin(np.abs(mu_v - W)))
+        rows.append({"target_width_mm": W, "sampler": "direct |mu - W*| min", "speed_mm_s": vv[i],
+                     "width_pred": mu_v[i], "width_3sigma": 3*sd_v[i], "Fp": np.nan,
+                     "distance_to_data": np.nan, "trials_to_best": len(vv)})
+    eq2 = pd.DataFrame(rows).sort_values(["target_width_mm", "sampler"])
     eq2.to_csv(OUT/"experiment_eq2_speeds.csv", index=False)
     print("\nEq. 2 inverse design at 1400 W (MaB), speed for a target width:\n" + eq2.round(3).to_string(index=False))
 
@@ -209,9 +224,10 @@ def template(mfile):
 
 def figures(model, fwd, ratio, runs, grid, prof, eta, ci, meas, label, eq2, hist, targets):
     # Fig. 5 analogue: width vs speed per power, per mode, +-3 sigma
-    vv = np.linspace(5.5, 12.5, 60)
     fig, axs = plt.subplots(1, 2, figsize=(10, 3.8), sharey=True)
     for ax, P in zip(axs, POWERS):
+        # 1000 W: flat-top runs exist down to 3 mm/s; 1400 W: only 6-12 mm/s runs nearby
+        vv = np.linspace(2.8 if P == 1000 else 5.5, 12.5, 80)
         for mode, (c, mk, lab) in MODE_STYLE.items():
             mu, sd, _ = model.width(ETA_NOMINAL*P, vv, mode)
             ax.fill_between(vv, mu - 3*sd, mu + 3*sd, color=c, alpha=0.15, lw=0)
@@ -223,7 +239,7 @@ def figures(model, fwd, ratio, runs, grid, prof, eta, ci, meas, label, eq2, hist
         ax.plot([], [], "o", ms=9, mfc="none", mec=INK, label="simulated flat-top run")
         ax.set_title(f"{P:.0f} W, flat-top r = 1.5 mm, η = 0.35", loc="left")
         ax.set_xlabel("scan speed [mm/s]")
-        ax.set_xticks(SPEEDS)
+        ax.set_xticks((3.0,) + SPEEDS)
     axs[0].set_ylabel("track width [mm]")
     axs[1].legend(loc="upper right", fontsize=8)
     fig.tight_layout()
@@ -235,12 +251,12 @@ def figures(model, fwd, ratio, runs, grid, prof, eta, ci, meas, label, eq2, hist
     off = {"MaB": -0.25, "B": 0.0, "none": 0.25}
     for mode, (c, mk, lab) in MODE_STYLE.items():
         r = ratio[ratio["mode"] == mode]
-        ax.errorbar(r.speed_mm_s + off[mode], r.exponent_a, yerr=r.exponent_3sigma, fmt=mk, color=c,
-                    capsize=3, label=lab, mec="white")
+        ax.errorbar(r.speed_mm_s + off[mode], r.exponent_a_able, yerr=r.exponent_3sigma_able, fmt=mk,
+                    color=c, capsize=3, label=lab, mec="white")
     ax.set_xticks(SPEEDS)
     ax.set_xlabel("scan speed [mm/s]")
     ax.set_ylabel("a = ln(W₁₄₀₀/W₁₀₀₀) / ln 1.4")
-    ax.set_title("Width power exponent (absorptivity cancels), ±3σ", loc="left")
+    ax.set_title("Width power exponent (η cancels), ±3σ over XGB, SVR, NN, GP", loc="left")
     ax.legend(fontsize=8)
     fig.savefig(OUT/"fig_experiment_width_exponent.png")
     plt.close(fig)
