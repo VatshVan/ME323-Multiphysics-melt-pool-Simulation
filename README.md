@@ -1,8 +1,8 @@
 # Transient Laser Melt-Pool Simulation with Marangoni Flow
 
 **ME323 course project.** This is a 3D, transient thermo-fluid simulation of a
-moving Gaussian laser melting the surface of a **Ti-6Al-4V** block. It is built
-on the open-source finite-volume solver
+moving laser melting the surface of a **Ti-6Al-4V** block. It is built on the
+open-source finite-volume solver
 [AdditiveFOAM](https://github.com/ORNL/AdditiveFOAM) 2.0.0, running on
 OpenFOAM-14.
 
@@ -17,33 +17,63 @@ It includes:
 - surface-tension (Marangoni) shear;
 - convection and radiation to room temperature.
 
-A parametric study varies scan speed, laser power, absorptivity and beam
-radius. Paired runs with the Marangoni effect switched off show how much it
-matters.
+**Main study.** It follows the teaching assistant's specification and asks
+how Marangoni convection affects the pool:
+
+- a **3 mm uniform (top-hat) beam**;
+- **1000 and 2000 W**;
+- **3, 6 and 9 mm/s**;
+- every setting run three times: **Marangoni + buoyancy**, **buoyancy only**
+  and **neither**, giving 18 runs;
+- outputs: pool geometry, temperature, and the solidification parameters
+  **G and R**.
+
+**Earlier exploratory work** used Gaussian beams: a 15-run parameter study, a
+12-run 3 mm validation set and a beam-shape test. It is kept as appendices of
+the report.
 
 📄 **Full report: [docs/REPORT.md](docs/REPORT.md)** · ▶️ **[Run it yourself](#running-it-yourself)**
 
-![3D cut-away of a melt pool](results/R02/3d_0.75s.png)
+![3D cut-away of a melt pool](results/U2000_v6_MaB/3d_0.5s.png)
 
 ## Key results
 
-| | With Marangoni flow (12 runs) | Without (3 paired runs) |
-|---|---|---|
-| Pool depth | 0.37–0.60 mm | 2.3–2.4× deeper |
-| Pool width | 2.6–5.1 mm (width/depth 6.6–8.8) | 23–27 % narrower (width/depth ≈ 2.7) |
-| Peak temperature (quasi-steady) | 2810–3130 K (below boiling, 3533 K) | 4940–5590 K (unphysical: no evaporation in the model) |
-| Peak melt speed | 0.41–0.53 m/s | ≈ 0.02 m/s (buoyancy only) |
-| Marangoni / buoyancy, Ma/Gr | 365–1384 | — |
-| Péclet number | 58–146 (convection dominates) | 2–5 |
-| Cooling rate at solidification | 960–4260 K/s, rising with scan speed | — |
+**Uniform 3 mm beam, 18 runs.** Values are quasi-steady. The ranges cover the
+six power–speed settings; [docs/REPORT.md](docs/REPORT.md) has every run.
 
-**Marangoni flow is the main mechanism in the pool.** For Ti-6Al-4V, dσ/dT is
-negative, so the surface flows outward from under the beam. That flow:
-- spreads the heat sideways;
-- caps the peak temperature;
-- turns a deep hemispherical conduction pool into a wide, shallow one.
+| | Marangoni + buoyancy | Buoyancy only | Neither (conduction) |
+|---|---|---|---|
+| Pool depth | **0.31–0.70 mm** | 0.52–1.42 mm | 0.52–1.62 mm |
+| Pool width | **2.6–5.4 mm** | 2.4–4.2 mm | 2.4–4.0 mm |
+| Width / depth | **7.0–8.3** (pan) | 3.0–4.6 | 2.4–4.6 (bowl) |
+| Peak temperature | **2251–2674 K** | 2609–3798 K | 2614–4046 K (above boiling, 3533 K, at 2000 W) |
+| Peak melt speed | 0.19–0.41 m/s | 0.001–0.021 m/s | 0 |
+| Median G | 727–1135 K/mm | 710–1153 K/mm | 707–1153 K/mm |
+| Median R | **0.57–3.30 mm/s** | 1.39–4.79 mm/s | 1.53–4.79 mm/s |
+| G/R | **354–1157 K·s/mm²** | 240–620 K·s/mm² | 236–608 K·s/mm² |
 
-![Marangoni on vs off](docs/figures/marangoni_on_off.png)
+**How Marangoni flow changes the pool:**
+
+- **Depth:** about halved (×0.43–0.61).
+- **Width:** 10–36 % larger.
+- **Peak temperature:** 360–1370 K lower. Superheat ≈ 0.76·Pe^−0.16 of its
+  conduction value.
+- **G:** unchanged (±7 %).
+- **R:** 14–63 % lower.
+- **G/R:** 1.3–2.5 times higher.
+- **Melted area:** 26–46 % less.
+
+**Buoyancy alone** changes the pool by under 3.5 % at 1000 W and by up to
+12.5 % at 2000 W.
+
+![Effect of each driving force](docs/figures/ta/force_effect_ratios.png)
+
+![Pool outlines with the three force sets](docs/figures/ta/pool_outline_cross.png)
+
+**Earlier Gaussian-beam study** (report Appendix A). With Marangoni flow the
+pools were 0.37–0.60 mm deep and 6.6–8.8 times wider than deep. Without it
+they were 2.3–2.4 times deeper and 2000–2500 K hotter: the same mechanism,
+with a different beam.
 
 ## Model summary
 
@@ -64,17 +94,33 @@ code is in [docs/SIMULATION_PLAN.md](docs/SIMULATION_PLAN.md).
 
 ## Run matrix
 
-| Run | Speed (mm/s) | Absorbed power (W) | Absorptivity | Beam radius (mm) |
-|---|---|---|---|---|
-| R01 / R02 / R03 | 4 | 300 / 500 / 700 | 0.30 / 0.35 / 0.40 | 0.50 / 0.75 / 1.00 |
-| R04 / R05 / R06 | 6 | 400 / 600 / 800 | 0.40 / 0.30 / 0.35 | 0.50 / 0.75 / 1.00 |
-| R07 / R08 / R09 | 8 | 350 / 550 / 750 | 0.35 / 0.40 / 0.30 | 0.60 / 0.75 / 1.00 |
-| R10 / R11 / R12 | 10 | 450 / 650 / 800 | 0.30 / 0.35 / 0.40 | 0.50 / 0.75 / 0.90 |
-| R02_noMa, R06_noMa, R11_noMa | as R02, R06, R11 | | | |
+**Main study (uniform beam).** Beam radius 1.5 mm (3 mm diameter), absorptivity
+0.35, super-Gaussian exponent k = 20.
 
-The `_noMa` runs use **dσ/dT = 0**, so the Marangoni force is off; buoyancy is
-still on. The full table, with laser power and line energy, is in
-[config/baseline.json](config/baseline.json) and the report.
+| Runs | Laser power (W) | Absorbed (W) | Speed (mm/s) | Force sets |
+|---|---|---|---|---|
+| U1000_v3_*, U1000_v6_*, U1000_v9_* | 1000 | 350 | 3, 6, 9 | `MaB`, `B`, `none` |
+| U2000_v3_*, U2000_v6_*, U2000_v9_* | 2000 | 700 | 3, 6, 9 | `MaB`, `B`, `none` |
+
+The three force sets differ only in these settings:
+
+| Force set | dσ/dT (N/m·K) | β (1/K) | Flow solved |
+|---|---|---|---|
+| `MaB` | −2.6e-4 | 1.6e-4 | yes |
+| `B` | 0 | 1.6e-4 | yes |
+| `none` | 0 | 0 | no (conduction only) |
+
+**Earlier Gaussian runs.**
+
+| Runs | What they are |
+|---|---|
+| R01–R12 | Speed 4–10 mm/s, 300–800 W absorbed, r = 0.5–1.0 mm |
+| R02_noMa, R06_noMa, R11_noMa | Without Marangoni flow |
+| V1000/V1400_v6/v9/v12 (with and without `_noMa`) | 3 mm Gaussian validation set |
+| V1400_v6_flat | Flat-top test, k = 10 |
+
+The full table is in [config/baseline.json](config/baseline.json) and the
+report.
 
 ## Data
 
@@ -115,9 +161,10 @@ scripts/
   export_3d.py             full-width 3D fields (ParaView .vtu), 3D images, surface Marangoni metrics
   export_excel.py          results/melt_pool_dataset.xlsx
   report_figures.py        summary figures for the report (docs/figures/)
+  ta_figures.py            uniform-beam study: comparison figures (docs/figures/ta/), results/ta_summary.csv, ta_fits.csv
   estimate_pool.py         Rosenthal pool-size and time-step estimates
 docs/
-  REPORT.md                project report
+  REPORT.md                project report (uniform-beam study, Gaussian work in appendices)
   SIMULATION_PLAN.md       physics-to-solver mapping, design history
   SETUP.md                 installation
 papers/                    reference papers (Gao 2021, Farzadi 2008, Pariona 2018, Fuhrich 2001)
@@ -343,7 +390,8 @@ tail -f cases/V1000/log.additiveFoam
 After all runs finish, refresh the report figures:
 
 ```bash
-python scripts/report_figures.py --areas
+python scripts/ta_figures.py               # uniform-beam study (U* runs), docs/figures/ta/
+python scripts/report_figures.py --areas   # Gaussian exploratory study (R* runs), docs/figures/
 ```
 
 ### What you get for each run
