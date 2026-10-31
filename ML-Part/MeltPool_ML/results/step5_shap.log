@@ -1,0 +1,17 @@
+/home/vatshvan/.local/lib/python3.11/site-packages/matplotlib/projections/__init__.py:63: UserWarning: Unable to import Axes3D. This may be due to multiple versions of Matplotlib being installed (e.g. as a system package and as a pip package). As a result, the 3D projection is not available.
+  warnings.warn("Unable to import Axes3D. This may be due to multiple versions of "
+depth        surrogate R2 0.99995  mean|SHAP| P_abs 0.128  v 0.0757  r 0.0188  Marangoni 0.244
+width        surrogate R2 0.99996  mean|SHAP| P_abs 0.489  v 0.256  r 0.0339  Marangoni 0.342
+T_max        surrogate R2 0.99993  mean|SHAP| P_abs 339  v 48.1  r 279  Marangoni 648
+cooling_rate surrogate R2 0.99984  mean|SHAP| P_abs 360  v 808  r 134  Marangoni 329
+G            surrogate R2 0.99989  mean|SHAP| P_abs 67.4  v 32.3  r 12  Marangoni 4.72
+R            surrogate R2 0.99990  mean|SHAP| P_abs 0.217  v 0.774  r 0.0926  Marangoni 0.567
+
+Interaction importance (mean |SHAP interaction| x 2):
+              P_abs×v    P_abs×r  P_abs×Marangoni      v×r  v×Marangoni  r×Marangoni
+depth          0.0084   0.001400         0.061200   0.0012     0.030400     0.012600
+width          0.0378   0.015600         0.098400   0.0092     0.029700     0.011600
+T_max         11.4426  33.740501       161.901001   4.3699    29.088699   107.153503
+cooling_rate  75.5457  32.947800        75.071899  53.0690    64.735497    27.843300
+G              3.1794   0.847500         1.128300   0.4789     3.248100     1.705900
+R              0.0541   0.012300         0.012600   0.0360     0.119900     0.019400

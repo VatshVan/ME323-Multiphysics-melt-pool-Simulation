@@ -98,16 +98,16 @@ def width_ratio(model):
         _, _, A2 = model.width(ETA_NOMINAL*POWERS[1], SPEEDS, mode)
         ratio = A2/A1                          # per algorithm
         expo = np.log(ratio)/np.log(POWERS[1]/POWERS[0])
-        # RF (shallow trees) and Bayesian ridge (linear in log inputs, no
-        # flow x power terms) cannot represent a mode-dependent exponent;
-        # the "able" columns average the other four
-        able = [i for i, al in enumerate(model.m.ens) if al not in ("Random Forest", "Bayesian Ridge")]
+        # Bayesian ridge (linear in log inputs, no flow x power terms)
+        # cannot represent a mode-dependent exponent; the "able" columns
+        # average the other four composite members
+        able = [i for i, al in enumerate(model.m.members) if al != "Bayesian Ridge"]
         for i, v in enumerate(SPEEDS):
             row = {"mode": mode, "speed_mm_s": v, "ratio": ratio[:, i].mean(),
                    "ratio_3sigma": 3*ratio[:, i].std(), "exponent_a": expo[:, i].mean(),
                    "exponent_3sigma": 3*expo[:, i].std(),
                    "exponent_a_able": expo[able, i].mean(), "exponent_3sigma_able": 3*expo[able, i].std()}
-            row.update({f"a_{al}": expo[j, i] for j, al in enumerate(model.m.ens)})
+            row.update({f"a_{al}": expo[j, i] for j, al in enumerate(model.m.members)})
             rows.append(row)
     df = pd.DataFrame(rows)
     df.to_csv(OUT/"experiment_width_ratio.csv", index=False)

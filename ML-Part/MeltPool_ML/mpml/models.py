@@ -32,6 +32,7 @@ from sklearn.multioutput import MultiOutputRegressor
 from sklearn.svm import SVR
 
 ALGORITHMS = ["XGBoost", "SVM", "Neural Network", "Random Forest", "Bayesian Ridge", "Gaussian Process"]
+MEMBERS = [a for a in ALGORITHMS if a != "Random Forest"]  # see Composite
 
 
 class Net(nn.Module):
@@ -189,10 +190,16 @@ class KFoldEnsemble:
 
 class Composite:
     """Average of the algorithm ensembles; sigma = spread across algorithms
-    (np.std over the algorithm means, Wang et al. Sec. 2.4)."""
+    (np.std over the algorithm means, Wang et al. Sec. 2.4).
 
-    def __init__(self, params, algos=ALGORITHMS, seed=0, max_rows=None):
+    All algorithms are trained (predict_algos reports each one), but only
+    `members` enter mu and sigma. Random forest is left out: its Eq. 1
+    score is below or near zero on both datasets (-0.34 runs, 0.08 events),
+    the paper's reason for leaving out KNN (Wang et al. Sec. 3.2)."""
+
+    def __init__(self, params, algos=ALGORITHMS, seed=0, max_rows=None, members=MEMBERS):
         self.ens = {a: KFoldEnsemble(a, params[a], seed, (max_rows or {}).get(a)) for a in algos}
+        self.members = [a for a in members if a in self.ens]
 
     def fit(self, X, Y, groups=None):
         for e in self.ens.values():
@@ -203,9 +210,10 @@ class Composite:
         return {a: e.predict(X) for a, e in self.ens.items()}
 
     def predict(self, X):
-        P = np.stack(list(self.predict_algos(X).values()))  # (A, n, T)
+        """mu, sigma and the (members, n, T) predictions of the members."""
+        P = np.stack([self.ens[a].predict(X) for a in self.members])
         return P.mean(0), P.std(0), P
 
     @property
     def n_models(self):
-        return sum(len(e.models) for e in self.ens.values())
+        return sum(len(self.ens[a].models) for a in self.members)

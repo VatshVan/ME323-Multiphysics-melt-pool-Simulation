@@ -1,0 +1,33 @@
+/home/vatshvan/.local/lib/python3.11/site-packages/matplotlib/projections/__init__.py:63: UserWarning: Unable to import Axes3D. This may be due to multiple versions of Matplotlib being installed (e.g. as a system package and as a pip package). As a result, the 3D projection is not available.
+  warnings.warn("Unable to import Axes3D. This may be due to multiple versions of "
+events: train 70032 (41 runs), holdout 9227 (['R04', 'R09', 'U1000_v9_MaB', 'U2000_v3_MaB', 'U2000_v6_MaB'])
+composite: 34 models in 117 s
+quantity                            G      R    G/R    G*R
+model                                                     
+composite                       0.756  0.733  0.698  0.752
+6-algorithm composite incl. RF  0.731  0.704  0.668  0.724
+log-linear baseline             0.109  0.555  0.532  0.501
+XGBoost                         0.791  0.707  0.653  0.742
+SVM                             0.481  0.669  0.591  0.676
+Neural Network                  0.838  0.762  0.709  0.796
+Random Forest                   0.410  0.378  0.299  0.417
+Bayesian Ridge                  0.110  0.555  0.532  0.501
+Gaussian Process                0.830  0.752  0.707  0.782
+quantity                            G      R    G/R    G*R
+model                                                     
+composite                       0.832  0.333  0.356  0.316
+6-algorithm composite incl. RF  0.788  0.329  0.351  0.313
+log-linear baseline             0.415  0.208  0.253  0.174
+XGBoost                         0.861  0.383  0.377  0.366
+SVM                             0.859  0.295  0.315  0.283
+Neural Network                  0.878  0.369  0.366  0.348
+Random Forest                   0.500  0.242  0.229  0.221
+Bayesian Ridge                  0.415  0.208  0.253  0.175
+Gaussian Process                0.863  0.377  0.387  0.368
+                 G_sim    G_pred  R_sim  R_pred     n
+case                                                 
+R04           1000.070  1050.950  2.289   2.025  1535
+R09            861.766   897.470  2.070   1.752  1999
+U1000_v9_MaB  1082.700  1068.085  3.298   2.741   695
+U2000_v3_MaB   727.429   780.630  0.570   0.849  2919
+U2000_v6_MaB   807.109   832.523  1.094   1.413  2079

@@ -134,9 +134,9 @@ def main():
     for k, (a_idx, b_idx) in enumerate(KFold(5, shuffle=True, random_state=SEED).split(runs)):
         t_k = Targets().fit(runs.iloc[a_idx])
         c = Composite(params, seed=SEED).fit(feats(runs.iloc[a_idx]), t_k(runs.iloc[a_idx]))
-        P = c.predict(feats(runs.iloc[b_idx]))[2]
-        oos_mu[b_idx], oos_sd[b_idx] = to_phys(t_k, P)
-        oos_alg[:, b_idx] = t_k.to_physical(P)
+        Xk = feats(runs.iloc[b_idx])
+        oos_mu[b_idx], oos_sd[b_idx] = to_phys(t_k, c.predict(Xk)[2])
+        oos_alg[:, b_idx] = t_k.to_physical(np.stack(list(c.predict_algos(Xk).values())))
         lin = LinearRegression().fit(Xb[a_idx], t_k(runs.iloc[a_idx]))
         base_oos[b_idx] = t_k.to_physical(lin.predict(Xb[b_idx]))
         print(f"  outer fold {k+1}/5 done")
@@ -147,7 +147,8 @@ def main():
     m = pd.DataFrame(metrics(Y_tr, mu_tr, "composite train") + metrics(Y_te, mu_te, "composite holdout")
                      + metrics(Y_te, base_te, "power-law baseline holdout")
                      + metrics(Y_all, oos_mu, "composite 5-fold OOS (all runs)")
-                     + metrics(Y_all, base_oos, "power-law baseline 5-fold OOS"))
+                     + metrics(Y_all, base_oos, "power-law baseline 5-fold OOS")
+                     + metrics(Y_all, oos_alg.mean(0), "6-algorithm composite incl. RF 5-fold OOS"))
     for j, al in enumerate(ALGORITHMS):
         m = pd.concat([m, pd.DataFrame(metrics(Y_all, oos_alg[j], f"{al} 5-fold OOS"))])
     m.to_csv(OUT/"run_model_metrics.csv", index=False)

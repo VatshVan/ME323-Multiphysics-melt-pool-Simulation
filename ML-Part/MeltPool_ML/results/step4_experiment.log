@@ -1,0 +1,49 @@
+/home/vatshvan/.local/lib/python3.11/site-packages/matplotlib/projections/__init__.py:63: UserWarning: Unable to import Axes3D. This may be due to multiple versions of Matplotlib being installed (e.g. as a system package and as a pip package). As a result, the 3D projection is not available.
+  warnings.warn("Unable to import Axes3D. This may be due to multiple versions of "
+[W 2026-10-31 21:00:56,383] The 'greenlet' package is unavailable, falling back to sequential L-BFGS-B optimization. This may lead to slower suggestions.
+Forward predictions for the experiment (eta = 0.35):
+mode  laser_power_W  speed_mm_s  width_pred  width_3sigma  width_sim_same_inputs  depth_pred  T_max_pred   Ma_pred
+ MaB         1000.0         6.0       2.854         0.150                  2.831       0.371    2266.714 52140.299
+ MaB         1000.0         9.0       2.602         0.119                  2.610       0.321    2232.212 43303.674
+ MaB         1000.0        12.0       2.459         0.161                    NaN       0.295    2208.861 38227.982
+ MaB         1400.0         6.0       3.596         0.144                    NaN       0.467    2436.776 94429.827
+ MaB         1400.0         9.0       3.225         0.233                    NaN       0.404    2410.312 80677.924
+ MaB         1400.0        12.0       3.036         0.131                    NaN       0.371    2390.418 73115.770
+   B         1000.0         6.0       2.526         0.184                  2.588       0.643    2772.623     0.000
+   B         1000.0         9.0       2.304         0.169                  2.374       0.539    2685.133     0.000
+   B         1000.0        12.0       2.176         0.208                    NaN       0.488    2633.813     0.000
+   B         1400.0         6.0       3.015         0.156                    NaN       0.876    3181.742     0.000
+   B         1400.0         9.0       2.738         0.184                    NaN       0.739    3080.072     0.000
+   B         1400.0        12.0       2.584         0.116                    NaN       0.667    3019.612     0.000
+none         1000.0         6.0       2.527         0.201                  2.584       0.656    2772.740     0.000
+none         1000.0         9.0       2.316         0.201                  2.372       0.549    2683.281     0.000
+none         1000.0        12.0       2.194         0.236                    NaN       0.497    2631.619     0.000
+none         1400.0         6.0       2.984         0.082                    NaN       0.913    3208.211     0.000
+none         1400.0         9.0       2.727         0.138                    NaN       0.761    3091.483     0.000
+none         1400.0        12.0       2.582         0.101                    NaN       0.684    3025.538     0.000
+
+Width ratio W(1400)/W(1000) and exponent a, per flow mode:
+mode  speed_mm_s  ratio  ratio_3sigma  exponent_a  exponent_3sigma  exponent_a_able  exponent_3sigma_able  a_XGBoost  a_SVM  a_Neural Network  a_Bayesian Ridge  a_Gaussian Process
+ MaB         6.0  1.260         0.101       0.687            0.239            0.705                 0.238      0.579  0.724             0.800             0.615               0.715
+ MaB         9.0  1.240         0.076       0.638            0.184            0.644                 0.202      0.536  0.709             0.641             0.615               0.690
+ MaB        12.0  1.235         0.079       0.628            0.191            0.631                 0.213      0.534  0.693             0.591             0.615               0.704
+   B         6.0  1.194         0.067       0.527            0.167            0.505                 0.114      0.445  0.547             0.502             0.615               0.525
+   B         9.0  1.189         0.082       0.513            0.204            0.488                 0.151      0.404  0.532             0.493             0.615               0.521
+   B        12.0  1.188         0.085       0.511            0.213            0.485                 0.162      0.403  0.518             0.474             0.615               0.545
+none         6.0  1.182         0.074       0.495            0.183            0.465                 0.036      0.445  0.469             0.475             0.615               0.472
+none         9.0  1.178         0.084       0.486            0.211            0.454                 0.092      0.404  0.455             0.470             0.615               0.485
+none        12.0  1.178         0.089       0.486            0.222            0.453                 0.120      0.403  0.443             0.454             0.615               0.514
+
+Absorptivity by BO (self-test: simulated MaB widths (true eta = 0.35)): eta = 0.348, chi2 = 0.12, 1-sigma range 0.340-0.355  (3 tracks, 40 BO trials)
+
+Eq. 2 inverse design at 1400 W (MaB), speed for a target width:
+ target_width_mm              sampler  speed_mm_s  width_pred  width_3sigma    Fp  distance_to_data  trials_to_best
+            3.18              BO (GP)       9.000       3.225         0.233 0.645             0.343              40
+            3.18 direct |mu - W*| min       9.660       3.180         0.183   NaN               NaN             601
+            3.18       random (paper)       9.131       3.216         0.222 0.676             0.343              29
+            3.32              BO (GP)       7.956       3.393         0.184 1.195             0.354              40
+            3.32 direct |mu - W*| min       8.310       3.320         0.101   NaN               NaN             601
+            3.32       random (paper)       8.769       3.282         0.114 1.319             0.344              23
+            3.46              BO (GP)       7.773       3.410         0.157 0.954             0.354              21
+            3.46 direct |mu - W*| min       7.250       3.460         0.075   NaN               NaN             601
+            3.46       random (paper)       7.587       3.427         0.129 1.161             0.345              31

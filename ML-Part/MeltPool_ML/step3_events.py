@@ -113,9 +113,10 @@ def main():
     t = time.time()
     comp = Composite(params, seed=SEED, max_rows=MAX_ROWS).fit(Xtr, Ytr, groups)
     print(f"composite: {comp.n_models} models in {time.time()-t:.0f} s")
-    _, _, P = comp.predict(Xte)
-    phys = tg.to_physical(P)               # (A, n, 2)
-    mu = np.exp(np.log(phys).mean(0))      # geometric mean across algorithms
+    alg = {a: tg.to_physical(z) for a, z in comp.predict_algos(Xte).items()}  # every algorithm
+    phys = np.stack([alg[a] for a in comp.members])                           # composite members
+    mu = np.exp(np.log(phys).mean(0))      # geometric mean across the members
+    mu_all = np.exp(np.log(np.stack(list(alg.values()))).mean(0))
     lin = LinearRegression().fit(Xtr, Ytr)
     base = tg.to_physical(lin.predict(Xte))
 
@@ -124,8 +125,8 @@ def main():
     def derived(m):
         return {"G": m[:, 0], "R": m[:, 1], "G/R": m[:, 0]/m[:, 1], "G*R": m[:, 0]*m[:, 1]}
     rows = []
-    for label, pr in [("composite", derived(mu)), ("log-linear baseline", derived(base))] + \
-            [(al, derived(phys[i])) for i, al in enumerate(comp.ens)]:
+    for label, pr in [("composite", derived(mu)), ("6-algorithm composite incl. RF", derived(mu_all)),
+                      ("log-linear baseline", derived(base))] + [(al, derived(v)) for al, v in alg.items()]:
         for q in sim:
             rows.append({"model": label, "quantity": q,
                          "R2_log": r2_score(np.log(sim[q]), np.log(pr[q])),
