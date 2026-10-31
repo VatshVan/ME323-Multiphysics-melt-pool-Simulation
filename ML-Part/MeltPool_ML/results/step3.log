@@ -1,3 +1,37 @@
 /home/vatshvan/.local/lib/python3.11/site-packages/matplotlib/projections/__init__.py:63: UserWarning: Unable to import Axes3D. This may be due to multiple versions of Matplotlib being installed (e.g. as a system package and as a pip package). As a result, the 3D projection is not available.
   warnings.warn("Unable to import Axes3D. This may be due to multiple versions of "
 events: train 70032 (41 runs), holdout 9227 (['R04', 'R09', 'U1000_v9_MaB', 'U2000_v3_MaB', 'U2000_v6_MaB'])
+tuned XGBoost           F=0.504 R2tr=0.819 R2val=0.740 (153 s) {'k': 10, 'N': 1, 'max_depth': 4, 'min_child_weight': 7, 'gamma': 0.8352428529515075, 'learning_rate': 0.14760981715603846, 'subsample': 0.7619195011826762, 'colsample_bytree': 0.7241195244666275, 'reg_alpha': 0.001077840069651944, 'reg_lambda': 21.30012205861915, 'n_estimators': 1146, 'early_stopping_rounds': 49}
+tuned SVM               F=0.541 R2tr=0.710 R2val=0.668 (928 s) {'k': 7, 'N': 1, 'C': 600.7249475906196, 'gamma': 0.12229065947034364, 'epsilon': 0.013157098861922905}
+tuned Neural Network    F=0.688 R2tr=0.847 R2val=0.807 (229 s) {'k': 8, 'N': 1, 'first': 50, 'second': 93, 'first_drop': 0.2673094691775718, 'second_drop': 0.309247927627082, 'lr': 0.01335380314500362, 'num_epochs': 200, 'batch_size': 1024}
+tuned Random Forest     F=0.083 R2tr=0.431 R2val=0.344 (57 s) {'k': 10, 'N': 1, 'n_estimators': 60, 'max_depth': 4, 'min_samples_split': 11, 'min_samples_leaf': 15}
+tuned Bayesian Ridge    F=0.319 R2tr=0.369 R2val=0.357 (3 s) {'k': 5, 'N': 1, 'alpha_1': 0.01051579607660945, 'alpha_2': 2.9649147628836787e-06, 'lambda_1': 0.049295073158138095, 'lambda_2': 0.00013369538953967867}
+tuned Gaussian Process  F=0.023 R2tr=1.000 R2val=0.756 (296 s) {'k': 4, 'N': 1, 'nu': 0.5, 'n_restarts': 1}
+composite: 44 models in 102 s
+quantity                 G      R    G/R    G*R
+model                                          
+composite            0.731  0.704  0.668  0.724
+log-linear baseline  0.109  0.555  0.532  0.501
+XGBoost              0.791  0.707  0.653  0.742
+SVM                  0.481  0.669  0.591  0.676
+Neural Network       0.838  0.762  0.709  0.796
+Random Forest        0.410  0.378  0.299  0.417
+Bayesian Ridge       0.110  0.555  0.532  0.501
+Gaussian Process     0.830  0.752  0.707  0.782
+quantity                 G      R    G/R    G*R
+model                                          
+composite            0.788  0.329  0.351  0.313
+log-linear baseline  0.415  0.208  0.253  0.174
+XGBoost              0.861  0.383  0.377  0.366
+SVM                  0.859  0.295  0.315  0.283
+Neural Network       0.878  0.369  0.366  0.348
+Random Forest        0.500  0.242  0.229  0.221
+Bayesian Ridge       0.415  0.208  0.253  0.175
+Gaussian Process     0.863  0.377  0.387  0.368
+                 G_sim    G_pred  R_sim  R_pred     n
+case                                                 
+R04           1000.070  1036.924  2.289   1.980  1535
+R09            861.766   924.155  2.070   1.815  1999
+U1000_v9_MaB  1082.700  1019.304  3.298   2.783   695
+U2000_v3_MaB   727.429   812.645  0.570   0.930  2919
+U2000_v6_MaB   807.109   859.319  1.094   1.552  2079

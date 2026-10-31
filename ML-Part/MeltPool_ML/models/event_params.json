@@ -1,0 +1,110 @@
+{
+  "params": {
+    "XGBoost": {
+      "k": 10,
+      "N": 1,
+      "max_depth": 4,
+      "min_child_weight": 7,
+      "gamma": 0.8352428529515075,
+      "learning_rate": 0.14760981715603846,
+      "subsample": 0.7619195011826762,
+      "colsample_bytree": 0.7241195244666275,
+      "reg_alpha": 0.001077840069651944,
+      "reg_lambda": 21.30012205861915,
+      "n_estimators": 1146,
+      "early_stopping_rounds": 49
+    },
+    "SVM": {
+      "k": 7,
+      "N": 1,
+      "C": 600.7249475906196,
+      "gamma": 0.12229065947034364,
+      "epsilon": 0.013157098861922905
+    },
+    "Neural Network": {
+      "k": 8,
+      "N": 1,
+      "first": 50,
+      "second": 93,
+      "first_drop": 0.2673094691775718,
+      "second_drop": 0.309247927627082,
+      "lr": 0.01335380314500362,
+      "num_epochs": 200,
+      "batch_size": 1024
+    },
+    "Random Forest": {
+      "k": 10,
+      "N": 1,
+      "n_estimators": 60,
+      "max_depth": 4,
+      "min_samples_split": 11,
+      "min_samples_leaf": 15
+    },
+    "Bayesian Ridge": {
+      "k": 5,
+      "N": 1,
+      "alpha_1": 0.01051579607660945,
+      "alpha_2": 2.9649147628836787e-06,
+      "lambda_1": 0.049295073158138095,
+      "lambda_2": 0.00013369538953967867
+    },
+    "Gaussian Process": {
+      "k": 4,
+      "N": 1,
+      "nu": 0.5,
+      "n_restarts": 1
+    }
+  },
+  "scores": {
+    "XGBoost": {
+      "F": 0.5038314470600299,
+      "r2_train": 0.8193610608337606,
+      "r2_val": 0.7404786573903279,
+      "n_trials": 15,
+      "seconds": 153
+    },
+    "SVM": {
+      "F": 0.5406370297630503,
+      "r2_train": 0.7100433815055187,
+      "r2_val": 0.6676917935699016,
+      "n_trials": 15,
+      "seconds": 928
+    },
+    "Neural Network": {
+      "F": 0.687752711736783,
+      "r2_train": 0.8473734206577754,
+      "r2_val": 0.8074682434275273,
+      "n_trials": 15,
+      "seconds": 229
+    },
+    "Random Forest": {
+      "F": 0.08297749554604739,
+      "r2_train": 0.43056337722125626,
+      "r2_val": 0.34366690680245404,
+      "n_trials": 15,
+      "seconds": 57
+    },
+    "Bayesian Ridge": {
+      "F": 0.3185692914175696,
+      "r2_train": 0.369166495338923,
+      "r2_val": 0.35651719435858464,
+      "n_trials": 15,
+      "seconds": 3
+    },
+    "Gaussian Process": {
+      "F": 0.02329162053263678,
+      "r2_train": 0.9999999999954281,
+      "r2_val": 0.7558229051297303,
+      "n_trials": 6,
+      "seconds": 296
+    }
+  },
+  "tune_rows": {
+    "Gaussian Process": 400,
+    "SVM": 3000
+  },
+  "max_rows": {
+    "SVM": 3000,
+    "Gaussian Process": 600
+  }
+}

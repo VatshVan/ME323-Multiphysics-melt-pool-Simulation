@@ -87,6 +87,31 @@ Points to state in the report:
 - The hyperparameters were tuned on the 41 training runs, which also appear in the outer 5-fold
   test folds, so the out-of-sample scores are slightly optimistic.
 
+### Local G/R model (events)
+
+70,032 training events (41 runs), 9,227 holdout events (the same 5 holdout runs). Folds grouped
+by run; SVR and the GP train on 3000 / 600 events per fold model (a GP fit costs ~n³); the
+other algorithms use every event. Eq. 1 scores: neural net 0.688, SVM 0.541, XGBoost 0.504,
+Bayesian ridge 0.319, random forest 0.083, GP 0.023 (GP: train R² 1.00 vs validation 0.76, so
+Eq. 1 penalises its overfitting on the small subsample). The composite has 44 models.
+
+Holdout runs, R² in log space and share of events predicted within a factor 1.25:
+
+| | G | R | G/R | G·R |
+|---|---|---|---|---|
+| composite, R²(log) | 0.731 | 0.704 | 0.668 | 0.724 |
+| neural net alone | 0.838 | 0.762 | 0.709 | 0.796 |
+| GP alone (600 events) | 0.830 | 0.752 | 0.707 | 0.782 |
+| log-linear baseline | 0.109 | 0.555 | 0.532 | 0.501 |
+| composite, within ×1.25 | 79 % | 33 % | 35 % | 31 % |
+
+G is predicted well; local R much less so. Along the fusion boundary R runs from near zero at the
+pool bottom to about the scan speed at the tail, and the model reproduces each run's trend but
+smooths the event-to-event scatter (the predicted G–R map in `fig_events_parity.png` is narrower
+than the simulated one). Per-run medians on the holdout runs: G within 4–12 %, R within
+12–63 % (worst for U2000_v3_MaB, the slowest, widest pool). Here too the neural net and GP alone
+beat the equal-weight composite, and random forest and Bayesian ridge pull it down.
+
 ### Experiment link (Fig. 5 analogue)
 
 Planned experiment: flat-top 3 mm beam (r = 1.5 mm, k = 20), 1000 and 1400 W, 6 and 9 mm/s
