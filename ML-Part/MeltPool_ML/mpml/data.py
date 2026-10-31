@@ -84,12 +84,16 @@ class Features:
     fixed from a reference table (all 46 runs) so new inputs, the virtual
     SHAP grid and the experiment cases share one scale."""
 
-    def __init__(self, set_name, reference, extra=()):
-        self.spec = FEATURE_SETS[set_name] + COMMON + list(extra)
+    def __init__(self, set_name, reference):
+        self.set_name = set_name
         self.names = [s[0] for s in self.spec]
         raw = self._raw(reference)
         self.lo, self.hi = raw.min(0), raw.max(0)
         self.hi = np.where(self.hi > self.lo, self.hi, self.lo + 1)
+
+    @property
+    def spec(self):  # rebuilt from the name, so the object pickles
+        return FEATURE_SETS[self.set_name] + COMMON
 
     def _raw(self, d):
         cols = []
