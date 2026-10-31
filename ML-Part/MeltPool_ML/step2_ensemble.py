@@ -177,6 +177,8 @@ def main():
     oos["Ma_sim"], oos["Ma_pred"], oos["Pe_sim"], oos["Pe_pred"] = Ma_s, Ma_p, Pe_s, Pe_p
     oos["holdout"] = oos["case"].isin(te["case"]).astype(int)
     oos.to_csv(OUT/"run_predictions_oos.csv", index=False)
+    np.savez(OUT/"run_oos_algorithms.npz", algorithms=np.array(ALGORITHMS), cases=runs["case"].values,
+             targets=np.array(TARGET_NAMES), pred=oos_alg)  # (algorithm, run, target), physical units
 
     figures(scores, runs, oos, Y_tr, mu_tr, Y_te, mu_te, sd_te, te)
 

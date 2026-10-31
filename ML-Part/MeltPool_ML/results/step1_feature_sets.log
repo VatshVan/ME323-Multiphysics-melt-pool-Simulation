@@ -1,0 +1,17 @@
+/home/vatshvan/.local/lib/python3.11/site-packages/matplotlib/projections/__init__.py:63: UserWarning: Unable to import Axes3D. This may be due to multiple versions of Matplotlib being installed (e.g. as a system package and as a pip package). As a result, the 3D projection is not available.
+  warnings.warn("Unable to import Axes3D. This may be due to multiple versions of "
+                           mean_R2  sd_over_repeats
+feature_set                                        
+[P_abs, v, r]                0.898            0.003
+[P_abs/sqrt(v r^3), v, r]    0.854            0.006
+[P_abs/v, v, r]              0.856            0.014
+feature_set   [P_abs, v, r]  [P_abs/sqrt(v r^3), v, r]  [P_abs/v, v, r]
+target                                                                 
+G                     0.925                      0.888            0.910
+R                     0.814                      0.759            0.822
+T_max                 0.832                      0.953            0.786
+U_surf                0.992                      0.978            0.972
+cooling_rate          0.777                      0.698            0.770
+depth                 0.969                      0.938            0.943
+length                0.939                      0.830            0.832
+width                 0.933                      0.788            0.811

@@ -1,0 +1,11 @@
+/home/vatshvan/.local/lib/python3.11/site-packages/matplotlib/projections/__init__.py:63: UserWarning: Unable to import Axes3D. This may be due to multiple versions of Matplotlib being installed (e.g. as a system package and as a pip package). As a result, the 3D projection is not available.
+  warnings.warn("Unable to import Axes3D. This may be due to multiple versions of "
+Uncertainty calibration (out-of-sample):
+      target  within_1sigma  within_2sigma  within_3sigma  median_abs_z
+       depth           0.57           0.93           1.00          0.81
+       width           0.57           0.93           1.00          0.95
+       T_max           0.83           0.93           0.96          0.60
+cooling_rate           0.54           0.78           0.85          0.92
+           G           0.28           0.72           0.91          1.27
+           R           0.39           0.65           0.80          1.21
+figures written to /home/vatshvan/Desktop/ME323-Multiphysics-melt-pool-Simulation/ML-Part/MeltPool_ML/results

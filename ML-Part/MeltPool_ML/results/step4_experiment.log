@@ -1,6 +1,6 @@
 /home/vatshvan/.local/lib/python3.11/site-packages/matplotlib/projections/__init__.py:63: UserWarning: Unable to import Axes3D. This may be due to multiple versions of Matplotlib being installed (e.g. as a system package and as a pip package). As a result, the 3D projection is not available.
   warnings.warn("Unable to import Axes3D. This may be due to multiple versions of "
-[W 2026-10-31 21:00:56,383] The 'greenlet' package is unavailable, falling back to sequential L-BFGS-B optimization. This may lead to slower suggestions.
+[W 2026-10-31 21:11:59,397] The 'greenlet' package is unavailable, falling back to sequential L-BFGS-B optimization. This may lead to slower suggestions.
 Forward predictions for the experiment (eta = 0.35):
 mode  laser_power_W  speed_mm_s  width_pred  width_3sigma  width_sim_same_inputs  depth_pred  T_max_pred   Ma_pred
  MaB         1000.0         6.0       2.854         0.150                  2.831       0.371    2266.714 52140.299

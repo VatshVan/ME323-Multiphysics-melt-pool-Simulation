@@ -135,6 +135,39 @@ class Targets:
         return np.stack([self._inv(c, Z[..., i]) for i, c in enumerate(self.cols)], -1)
 
 
+# Event-level (local G, R) model: run inputs + position scaled by the pool
+POSITION = ["s_track_mm", "y_over_halfwidth", "z_over_depth"]
+EVENT_TARGETS = ["G_K_mm", "R_mm_s"]
+
+
+class EventFeatures:
+    """Run features plus min-max scaled position (bounds from all events)."""
+
+    def __init__(self, set_name, runs, events):
+        self.run = Features(set_name, runs)
+        self.lo = events[POSITION].min().values
+        self.hi = events[POSITION].max().values
+        self.names = self.run.names + POSITION
+
+    def __call__(self, ev):
+        return np.column_stack([self.run(ev), (ev[POSITION].values - self.lo)/(self.hi - self.lo)])
+
+
+class EventTargets:
+    """log G, log R, standardised."""
+
+    def fit(self, ev):
+        z = np.log(ev[EVENT_TARGETS].values)
+        self.mu, self.sd = z.mean(0), z.std(0)
+        return self
+
+    def __call__(self, ev):
+        return (np.log(ev[EVENT_TARGETS].values) - self.mu)/self.sd
+
+    def to_physical(self, Z):
+        return np.exp(np.asarray(Z)*self.sd + self.mu)
+
+
 def derived_numbers(T_max_K, width_mm, U_surf_m_s, marangoni):
     """Ma and Pe from predicted T_max, width and mean surface speed, with
     the definitions of scripts/export_excel.py (Farzadi et al. 2008

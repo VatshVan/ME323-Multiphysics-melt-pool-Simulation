@@ -26,42 +26,16 @@ import pandas as pd
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
 
-from mpml.data import Features, load_events, load_runs, HERE
+from mpml.data import EVENT_TARGETS as TARGETS, EventFeatures, EventTargets, load_events, load_runs, HERE
 from mpml.models import ALGORITHMS, Composite
 from mpml.plots import INK, MUTED, SERIES, plt
 from mpml.tune import tune
 
 OUT, MODELS = HERE/"results", HERE/"models"
-POSITION = ["s_track_mm", "y_over_halfwidth", "z_over_depth"]
-TARGETS = ["G_K_mm", "R_mm_s"]
 TRIALS = {"Gaussian Process": 6}  # others: 15
 TUNE_ROWS = {"Gaussian Process": 400, "SVM": 3000}  # others: 4000 events per fold model while tuning
 MAX_ROWS = {"SVM": 3000, "Gaussian Process": 600}
 SEED = 0
-
-
-class EventFeatures:
-    def __init__(self, runs, events):
-        self.run = Features(json.loads((MODELS/"run_params.json").read_text())["feature_set"], runs)
-        self.lo = events[POSITION].min().values
-        self.hi = events[POSITION].max().values
-        self.names = self.run.names + POSITION
-
-    def __call__(self, ev):
-        return np.column_stack([self.run(ev), (ev[POSITION].values - self.lo)/(self.hi - self.lo)])
-
-
-class EventTargets:
-    def fit(self, ev):
-        z = np.log(ev[TARGETS].values)
-        self.mu, self.sd = z.mean(0), z.std(0)
-        return self
-
-    def __call__(self, ev):
-        return (np.log(ev[TARGETS].values) - self.mu)/self.sd
-
-    def to_physical(self, Z):
-        return np.exp(np.asarray(Z)*self.sd + self.mu)
 
 
 def _tune(args):
@@ -89,7 +63,7 @@ def main():
         ev = ev.groupby("case", group_keys=False).apply(lambda d: d.sample(min(len(d), 300), random_state=0))
     test = ev["case"].isin(holdout).values
     tr, te = ev[~test].reset_index(drop=True), ev[test].reset_index(drop=True)
-    fx = EventFeatures(runs, ev)
+    fx = EventFeatures(json.loads((MODELS/"run_params.json").read_text())["feature_set"], runs, ev)
     tg = EventTargets().fit(tr)
     Xtr, Ytr, Xte, Yte = fx(tr), tg(tr), fx(te), te[TARGETS].values
     groups = tr["case"].values
